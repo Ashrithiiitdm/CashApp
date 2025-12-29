@@ -1,6 +1,8 @@
 import express from "express";
-import mongoose from "mongoose";
 import "dotenv/config";
+import cors from "cors";
+import pool from "./db.js";
+import userRouter from "./routes/userRoutes.js";
 
 const port = process.env.PORT || 8000;
 
@@ -8,15 +10,27 @@ const app = express();
 
 app.use(express.json());
 
-// Connect to MongoDB and start the server
-mongoose
-    .connect(process.env.MONGO_URL)
-    .then(() => {
-        console.log("Connected to MongoDB");
+app.use(
+    cors({
+        origin: "*",
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+    })
+);
+
+app.use("/api/users", userRouter);
+
+async function startServer() {
+    try {
+        await pool.query("SELECT 1");
+
         app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
         });
-    })
-    .catch((error) => {
-        console.error("Error connecting to MongoDB:", error);
-    });
+    } catch (err) {
+        console.error("Failed to connect to the database:", err);
+        process.exit(1);
+    }
+}
+
+startServer();
