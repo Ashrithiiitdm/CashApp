@@ -114,33 +114,3 @@ export const loginUser = async (req, res) => {
         });
     }
 };
-
-// Get current user info (protected route example)
-export const getCurrentUser = async (req, res) => {
-    try {
-        // req.user is set by JWT middleware
-        const userResult = await pool.query(
-            "SELECT user_id, email, role, firebase_uid FROM users WHERE user_id = $1",
-            [req.user_id]
-        );
-
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            user: userResult.rows[0],
-        });
-    } catch (err) {
-        console.error("Error getting current user:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Error getting user",
-            error: err.message,
-        });
-    }
-};
