@@ -1,8 +1,90 @@
-import React from 'react';
 import logoImage from '../assets/icons/logo.png';
 import eyeImage from '../assets/icons/eye.png';
 import emailImage from '../assets/icons/email.png';
 import usernameImage from '../assets/icons/username.png';
+import walletImage from '../assets/icons/wallet.png';
+import walletFilledImage from '../assets/icons/walletFilled.png';
+import withdrawImage from '../assets/icons/withdraw.png';
+import recentImage from '../assets/icons/recent.png';
+import storeImage from '../assets/icons/store.png';
+import addMoneyImage from '../assets/icons/plus.png';
+import payPeopleImage from '../assets/icons/pay.png';
+import searchImage from '../assets/icons/search.png';
+
+const ActionIconWrapper = ({ children }) => (
+  <div className="w-12 h-12 bg-[#1c86c8] rounded-full flex items-center justify-center shadow-md mb-2">
+    {children}
+  </div>
+);
+
+export const WalletIcon = () => (
+  <img 
+    src={walletImage} 
+    alt="Wallet Icon" 
+    className='w-7 h-7'
+  />
+);
+
+export const CheckBalanceIcon = () => (
+  <ActionIconWrapper>
+    <img  
+      src={walletFilledImage} 
+      alt="Wallet Filled Icon" 
+      className='w-5 h-5'
+    />
+  </ActionIconWrapper>  
+);
+
+export const WithdrawIcon = () => (
+  <ActionIconWrapper>
+    <img 
+      src={withdrawImage}
+      alt="Withdraw Icon"
+      className='w-5 h-5'
+    />
+  </ActionIconWrapper>
+);  
+
+export const RecentIcon = () => (
+  <ActionIconWrapper>
+    <img 
+      src={recentImage} 
+      alt="Recent Icon"
+      className='w-5 h-5'
+    />
+  </ActionIconWrapper>
+);
+
+export const SearchStoresIcon = () => (
+  <ActionIconWrapper>
+    <img 
+      src={storeImage}
+      alt="Store Icon"
+      className='w-5 h-5'
+    />
+  </ActionIconWrapper>  
+);
+
+export const AddMoneyIcon = () => (
+  <ActionIconWrapper>
+    <img 
+      src={addMoneyImage}
+      alt="Add Money Icon"
+      className='w-5 h-5'
+    />
+  </ActionIconWrapper>
+  
+);
+
+export const PayPeopleIcon = () => (
+  <ActionIconWrapper>
+    <img 
+      src={payPeopleImage}
+      alt="Pay People Icon"
+      className='w-5 h-5'
+    />
+  </ActionIconWrapper>  
+);
 
 export const EmailIcon = () => (
   <img
@@ -17,6 +99,14 @@ export const UserNameIcon = () => (
     src={usernameImage} 
     alt='Username Icon'
     className='w-7 h-7'
+  />
+);
+
+export const SearchIcon = () => (
+  <img 
+    src={searchImage}
+    alt="Search Icon"
+    className='w-5 h-5'
   />
 );
 

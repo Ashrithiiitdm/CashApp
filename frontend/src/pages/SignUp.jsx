@@ -1,30 +1,34 @@
-import { useState } from "react";
-import InputField from "../components/InputField"; // Adjust path based on your folder structure
+import React, { useState } from "react";
+import InputField from "../components/InputField";
 import {
     EyeIcon,
     LogoIcon,
     EmailIcon,
     UserNameIcon,
-} from "../components/Icons"; // Adjust path based on your folder structure
+} from "../components/Icons";
 import GoogleSignUp from "../components/GoogleSignUp";
 import {
-    createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../config/firebase";
 import axios from "../config/axiosConfig";
+import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
     const [activeTab, setActiveTab] = useState("User");
     const tabs = ["User", "Vendor", "Employee"];
+
     const [formData, setFormData] = useState({
         email: "",
         name: "",
         password: "",
         confirmPassword: "",
     });
+
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    const navigate = useNavigate();
 
     const handleInputChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -59,9 +63,10 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            // Determine role based on active tab
+            // Determine role from tab
             const role = activeTab.toLowerCase();
 
+            // 1. Backend signup
             const response = await axios.post("/api/users/signup", {
                 email: formData.email,
                 password: formData.password,
@@ -72,14 +77,17 @@ const Signup = () => {
                 throw new Error(response.data.message || "Registration failed");
             }
 
+            // 2. Firebase login after signup
             const firebaseUser = await signInWithEmailAndPassword(
                 auth,
                 formData.email,
                 formData.password
             );
 
+            // 3. Get Firebase ID token
             const idToken = await firebaseUser.user.getIdToken();
 
+            // 4. Backend login
             const loginResponse = await axios.post("/api/users/login", {
                 idToken,
             });
@@ -92,11 +100,10 @@ const Signup = () => {
             }
 
             const token = loginResponse.data.token;
-
             localStorage.setItem("token", token);
 
-            // Success - redirect to login or home
-            window.location.href = "/";
+            // 5. Redirect
+            navigate("/");
         } catch (err) {
             console.error(err);
             setError(err.message || "Failed to register. Please try again.");
@@ -125,7 +132,11 @@ const Signup = () => {
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`pb-3 text-lg font-medium transition-colors relative
-                  ${activeTab === tab ? "text-[#1581BF]" : "text-gray-400 hover:text-gray-500"}`}
+                  ${
+                      activeTab === tab
+                          ? "text-[#1581BF]"
+                          : "text-gray-400 hover:text-gray-500"
+                  }`}
                             >
                                 {tab}
                                 {activeTab === tab && (
@@ -146,6 +157,7 @@ const Signup = () => {
                             {error}
                         </div>
                     )}
+
                     <InputField
                         type="email"
                         placeholder="Email address"
@@ -156,6 +168,7 @@ const Signup = () => {
                         }
                         disabled={loading}
                     />
+
                     <InputField
                         type="text"
                         placeholder="Full Name"
@@ -166,6 +179,7 @@ const Signup = () => {
                         }
                         disabled={loading}
                     />
+
                     <InputField
                         type="password"
                         placeholder="Enter Password"
@@ -176,13 +190,17 @@ const Signup = () => {
                         }
                         disabled={loading}
                     />
+
                     <InputField
                         type="password"
                         placeholder="Re-enter Password"
                         icon={<EyeIcon />}
                         value={formData.confirmPassword}
                         onChange={(e) =>
-                            handleInputChange("confirmPassword", e.target.value)
+                            handleInputChange(
+                                "confirmPassword",
+                                e.target.value
+                            )
                         }
                         disabled={loading}
                     />
