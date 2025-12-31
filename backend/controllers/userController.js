@@ -152,3 +152,78 @@ export const loginUser = async (req, res) => {
         });
     }
 };
+
+export const getRecentTransactions = async (req, res) => {
+    try {
+        const user_id = req.user_id;
+        const search = req.query.search?.trim();
+
+        let query = `
+            SELECT
+                T.transaction_id,
+                T.transaction_kind,
+                T.transaction_status,
+                T.amount_paise,
+                T.currency,
+                T.created_at,
+
+                -- user ↔ user
+                U2.user_id       AS peer_user_id,
+                U2.full_name     AS peer_name,
+                U2.cashapp_id    AS peer_cashapp_id,
+
+                -- user → store
+                S.store_id,
+                S.store_name
+
+            FROM transactions T
+
+            -- peer user (only when user ↔ user)
+            LEFT JOIN users U2
+              ON (
+                   (T.from_user_id = $1 AND U2.user_id = T.to_user_id)
+                OR (T.to_user_id   = $1 AND U2.user_id = T.from_user_id)
+              )
+
+            -- store (only when user → store)
+            LEFT JOIN stores S
+              ON S.store_id = T.store_id
+
+            WHERE
+                T.from_user_id = $1
+             OR T.to_user_id   = $1
+        `;
+
+        const params = [user_id];
+
+        // 🔍 Optional search (name or cashapp_id)
+        if (search) {
+            query += `
+                AND (
+                    U2.full_name ILIKE $2
+                 OR U2.cashapp_id ILIKE $2
+                 OR S.store_name ILIKE $2
+                )
+            `;
+            params.push(`%${search}%`);
+        }
+
+        query += `
+            ORDER BY T.created_at DESC
+            LIMIT 20
+        `;
+
+        const { rows } = await pool.query(query, params);
+
+        return res.status(200).json({
+            success: true,
+            recent_transactions: rows.length ? rows : [],
+        });
+    } catch (err) {
+        console.error("Error fetching recent transactions:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching recent transactions",
+        });
+    }
+};
