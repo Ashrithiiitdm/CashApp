@@ -26,12 +26,21 @@ export const registerUser = async (req, res) => {
         });
 
         // Create a cashapp id similar to Phonepe's upi id
-        const cashappId = email.split("@")[0] + ".cashapp";
+        const cashappId =
+            email.split("@")[0] +
+            Math.floor(Math.random() * 10000) +
+            ".cashapp";
 
         // Store user in your database (without password since Firebase handles it)
-        await pool.query(
+        const newUserResult = await pool.query(
             "INSERT INTO users (firebase_uid, email, role, cashapp_id) VALUES ($1, $2, $3, $4) RETURNING *",
             [firebaseUser.uid, email, role, cashappId]
+        );
+
+        // Create wallet account with 0 balance
+        await pool.query(
+            "INSERT INTO wallet_accounts (user_id, balance_cached) VALUES ($1, $2)",
+            [newUserResult.rows[0].user_id, 0]
         );
 
         return res.status(201).json({
@@ -80,7 +89,7 @@ export const loginUser = async (req, res) => {
             const userRole = role;
 
             // Validate role
-            const validRoles = ["student", "vendor", "employee", "admin"];
+            const validRoles = ["user", "vendor", "employee", "admin"];
             if (!validRoles.includes(userRole)) {
                 return res.status(400).json({
                     success: false,
@@ -88,11 +97,20 @@ export const loginUser = async (req, res) => {
                 });
             }
 
-            const cashappId = email.split("@")[0] + ".cashapp";
+            const cashappId =
+                email.split("@")[0] +
+                Math.floor(Math.random() * 10000) +
+                ".cashapp";
 
             userResult = await pool.query(
                 "INSERT INTO users (firebase_uid, email, role, cashapp_id) VALUES ($1, $2, $3, $4) RETURNING *",
                 [firebase_uid, email, userRole, cashappId]
+            );
+
+            // Create wallet account with 0 balance
+            await pool.query(
+                "INSERT INTO wallet_accounts (user_id, balance_cached) VALUES ($1, $2)",
+                [userResult.rows[0].user_id, 0]
             );
         }
         // If user exists, ignore the role parameter
