@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 // 1. Added 'value', 'onChange', and 'name' to the props
-const InputField = ({ type, placeholder, icon, value, onChange, name }) => {
+const InputField = ({ type, placeholder, icon, value, onChange, name, disabled }) => {
   
   // Store the current input type (e.g., 'password' or 'text')
   const [inputType, setInputType] = useState(type);
@@ -26,7 +26,10 @@ const InputField = ({ type, placeholder, icon, value, onChange, name }) => {
         
         type={inputType}
         placeholder={placeholder}
-        className="w-full py-4 px-4 rounded-[20px] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-none outline-none text-gray-700 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-[#1581BF]/50 transition-all duration-300"
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className="w-full py-4 px-4 rounded-[20px] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-none outline-none text-gray-700 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-[#1581BF]/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       />
       
       {/* Added 'cursor-pointer' so the user knows it's clickable */}
@@ -41,6 +44,12 @@ const InputField = ({ type, placeholder, icon, value, onChange, name }) => {
       </div>
     </div>
   );
+};
+
+InputField.defaultProps = {
+  value: '',
+  onChange: () => {},
+  disabled: false,
 };
 
 export default InputField;
