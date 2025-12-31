@@ -85,6 +85,8 @@ export const loginUser = async (req, res) => {
                 });
             }
 
+            const name = decodedToken.name || "";
+
             // Use provided role or default to 'student'
             const userRole = role;
 
@@ -103,8 +105,8 @@ export const loginUser = async (req, res) => {
                 ".cashapp";
 
             userResult = await pool.query(
-                "INSERT INTO users (firebase_uid, email, role, cashapp_id) VALUES ($1, $2, $3, $4) RETURNING *",
-                [firebase_uid, email, userRole, cashappId]
+                "INSERT INTO users (firebase_uid, full_name, email, role, cashapp_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                [firebase_uid, name, email, userRole, cashappId]
             );
 
             // Create wallet account with 0 balance
