@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 
-const InputField = ({ type, placeholder, icon }) => {
+// 1. Added 'value', 'onChange', and 'name' to the props
+const InputField = ({ type, placeholder, icon, value, onChange, name }) => {
+  
   // Store the current input type (e.g., 'password' or 'text')
   const [inputType, setInputType] = useState(type);
   
@@ -17,14 +19,20 @@ const InputField = ({ type, placeholder, icon }) => {
   return (
     <div className="relative w-full group">
       <input
+        // 2. Bind the input to the props
+        value={value}
+        onChange={onChange}
+        name={name} 
+        
         type={inputType}
         placeholder={placeholder}
         className="w-full py-4 px-4 rounded-[20px] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.05)] border-none outline-none text-gray-700 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-[#1581BF]/50 transition-all duration-300"
       />
       
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 select-none">
+      {/* Added 'cursor-pointer' so the user knows it's clickable */}
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 select-none cursor-pointer">
         {/* If an icon is provided, we clone it and pass the new props 
-           (onClick and isVisible) to it automatically.
+            (onClick and isVisible) to it automatically.
         */}
         {icon && React.cloneElement(icon, {
           onClick: toggleVisibility,
