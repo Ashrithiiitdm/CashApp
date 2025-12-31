@@ -136,6 +136,7 @@ export const loginUser = async (req, res) => {
             user: {
                 user_id: user.user_id,
                 role: user.role,
+                name: user.full_name,
                 wallet_balance: walletResult.rows.length
                     ? walletResult.rows[0].balance_cached
                     : 0,
