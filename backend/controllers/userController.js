@@ -25,10 +25,13 @@ export const registerUser = async (req, res) => {
             password: password,
         });
 
+        // Create a cashapp id similar to Phonepe's upi id
+        const cashappId = email.split("@")[0] + ".cashapp";
+
         // Store user in your database (without password since Firebase handles it)
         await pool.query(
-            "INSERT INTO users (firebase_uid, email, role) VALUES ($1, $2, $3) RETURNING *",
-            [firebaseUser.uid, email, role]
+            "INSERT INTO users (firebase_uid, email, role, cashapp_id) VALUES ($1, $2, $3, $4) RETURNING *",
+            [firebaseUser.uid, email, role, cashappId]
         );
 
         return res.status(201).json({
@@ -85,14 +88,22 @@ export const loginUser = async (req, res) => {
                 });
             }
 
+            const cashappId = email.split("@")[0] + ".cashapp";
+
             userResult = await pool.query(
-                "INSERT INTO users (firebase_uid, email, role) VALUES ($1, $2, $3) RETURNING *",
-                [firebase_uid, email, userRole]
+                "INSERT INTO users (firebase_uid, email, role, cashapp_id) VALUES ($1, $2, $3, $4) RETURNING *",
+                [firebase_uid, email, userRole, cashappId]
             );
         }
         // If user exists, ignore the role parameter
 
         const user = userResult.rows[0];
+
+        // Return the name of the user, wallet balance
+        const walletResult = await pool.query(
+            "SELECT balance_cached FROM wallet_accounts WHERE user_id = $1",
+            [user.user_id]
+        );
 
         // 4. Generate your own JWT token
         const jwtSecret = process.env.JWT_SECRET;
@@ -104,6 +115,14 @@ export const loginUser = async (req, res) => {
             success: true,
             message: "User logged in successfully",
             token: token,
+            user: {
+                user_id: user.user_id,
+                role: user.role,
+                wallet_balance: walletResult.rows.length
+                    ? walletResult.rows[0].balance_cached
+                    : 0,
+                cashappId: user.cashapp_id,
+            },
         });
     } catch (err) {
         console.error("Error logging in user:", err);
