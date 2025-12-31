@@ -2,10 +2,21 @@ import React, { useState } from 'react';
 import InputField from '../components/InputField'; // Adjust path based on your folder structure
 import { EyeIcon, LogoIcon, EmailIcon, UserNameIcon } from '../components/Icons'; // Adjust path based on your folder structure
 import GoogleSignUp from '../components/GoogleSignUp';
+import { useNavigate } from 'react-router-dom';
 
 const Signup = () => {
   const [activeTab, setActiveTab] = useState('User');
   const tabs = ['User', 'Vendor', 'Employee'];
+
+  const navigate = useNavigate();
+
+  const registerUser = () => {
+    // TODO: Add your verification/API logic here
+    console.log("Verifying user...");
+
+    // Redirect to the home page (assuming your route is '/home')
+    navigate('/home');
+  };
 
   return (
     <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 overflow-y-auto">
@@ -64,7 +75,7 @@ const Signup = () => {
 
         {/* --- Footer Section --- */}
         <div className="w-full flex flex-col items-center gap-4">
-          <button className="w-full bg-[#1581BF] text-white text-xl font-bold py-3 rounded-[20px] shadow-lg hover:bg-[#0D6A9F] hover:shadow-xl active:scale-[0.98] transition-all duration-200">
+          <button onClick={registerUser} className="w-full bg-[#1581BF] text-white text-xl font-bold py-3 rounded-[20px] shadow-lg hover:bg-[#0D6A9F] hover:shadow-xl active:scale-[0.98] transition-all duration-200">
             Register
           </button>
 
