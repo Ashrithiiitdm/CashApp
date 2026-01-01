@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/useAuthStore';
 import {
   LogoIcon,
   WalletIcon,
@@ -16,20 +17,30 @@ import dummayQR from '../assets/icons/dummyQR.png'; // Dummy QR code image
 
 const Home = () => {
   // Data for the bottom action grid
+
+
   const actions = [
-    { label: 'Pay People', icon: <PayPeopleIcon /> },
-    { label: 'Add money', icon: <AddMoneyIcon /> },
-    { label: 'Recent Transactions', icon: <RecentIcon /> },
-    { label: 'Check Balance', icon: <CheckBalanceIcon /> },
-    { label: 'Search Stores', icon: <SearchStoresIcon /> },
-    { label: 'Withdraw Money', icon: <WithdrawIcon /> },
+    { label: 'Pay People', icon: <PayPeopleIcon />, onClick: () => navigate('/paypeople') },
+    { label: 'Add money', icon: <AddMoneyIcon />, onClick: () => alert('Add money clicked!') },
+    { label: 'Recent Transactions', icon: <RecentIcon />, onClick: () => alert('Recent Transactions clicked!') },
+    { label: 'Check Balance', icon: <CheckBalanceIcon />, onClick: () => alert('Check Balance clicked!') },
+    { label: 'Search Stores', icon: <SearchStoresIcon />, onClick: () => alert('Search Stores clicked!') },
+    { label: 'Withdraw Money', icon: <WithdrawIcon />, onClick: () => alert('Withdraw Money clicked!') },
   ];
 
   const navigate = useNavigate();
 
+  const wallet = useAuthStore((state) => state.wallet) || 0;
+
   const clickScanner = () => {
     console.log("Scanner clicked!");
     navigate('/qrscanner');
+  };
+
+  const clickSearch = () => {
+    console.log("Search clicked!");
+    // Pass { state: { focusSearch: true } } to the next page
+    navigate('/paypeople', { state: { focusSearch: true } });
   };
 
   return (
@@ -37,7 +48,7 @@ const Home = () => {
     <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 overflow-y-auto font-sans">
       
       {/* Scanner Animation Style */}
-      <style jsx>{`
+      <style>{`
         @keyframes scan {
           0%, 100% { top: 10%; }
           50% { top: 80%; }
@@ -64,13 +75,13 @@ const Home = () => {
             
             {/* Right Balance Pill */}
             <div className="flex items-center bg-[#eef7ee] border border-[#dcf0dc] rounded-full px-4 py-1.5">
-               <span className="text-[#36a736] font-bold mr-2">₹ 500.00</span>
+               <span className="text-[#36a736] font-bold mr-2">₹ {Number(wallet).toFixed(2)}</span>
                <WalletIcon />
             </div>
           </div>
 
           {/* Search Bar */}
-          <div className="relative w-full">
+          <div onClick={clickSearch} className="relative w-full">
             <input
               type="text"
               placeholder="Search stores or people to pay"
@@ -103,7 +114,7 @@ const Home = () => {
         <div className="bg-[#f8f9fd] px-6 py-4">
             <div className="grid grid-cols-3 gap-y-4 gap-x-4">
                 {actions.map((item, index) => (
-                    <div key={index} className="flex flex-col items-center text-center cursor-pointer hover:scale-105 transition-transform duration-200">
+                    <div key={index} onClick={item.onClick} className="flex flex-col items-center text-center cursor-pointer hover:scale-105 transition-transform duration-200">
                         <div className="mb-1">
                            {item.icon}
                         </div>
