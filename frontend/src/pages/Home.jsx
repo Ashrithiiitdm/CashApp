@@ -24,7 +24,7 @@ const Home = () => {
     { label: 'Add money', icon: <AddMoneyIcon />, onClick: () => alert('Add money clicked!') },
     { label: 'Recent Transactions', icon: <RecentIcon />, onClick: () => navigate('/recent-transactions') },
     { label: 'Check Balance', icon: <CheckBalanceIcon />, onClick: () => alert('Check Balance clicked!') },
-    { label: 'Search Stores', icon: <SearchStoresIcon />, onClick: () => alert('Search Stores clicked!') },
+    { label: 'Search Stores', icon: <SearchStoresIcon />, onClick: () => navigate('/search-stores') },
     { label: 'Withdraw Money', icon: <WithdrawIcon />, onClick: () => alert('Withdraw Money clicked!') },
   ];
 

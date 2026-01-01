@@ -7,6 +7,8 @@ import PayPeoplePage from './pages/PayPeople.jsx'
 import MoneyTransfer from './pages/MoneyTransfer.jsx'
 import PaymentSuccess from './pages/PaymentSuccess.jsx'
 import RecentTransactions from './pages/RecentTransactions.jsx'
+import SearchStores from './pages/SearchStores.jsx'
+import StoreDetails from './pages/StoreDetails.jsx'
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
         <Route path="/moneytransfer" element={<MoneyTransfer />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/recent-transactions" element={<RecentTransactions />} />
+        <Route path="/search-stores" element={<SearchStores />} />
+        <Route path="/store-details" element={<StoreDetails />} />
       </Routes>
     </div>
   )

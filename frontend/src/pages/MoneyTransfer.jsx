@@ -13,13 +13,15 @@ const MoneyTransfer = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Contact passed from PayPeoplePage
     const contact = location.state?.contact;
+    const prefilledAmount = location.state?.prefilledAmount;
+    const isPaymentFlow = location.state?.isPaymentFlow;
 
     // 🔑 Correct store usage
     const { wallet, setWallet, token } = useAuthStore();
 
-    const [amount, setAmount] = useState("");
+    // If prefilledAmount exists, use it; otherwise default to empty string
+    const [amount, setAmount] = useState(prefilledAmount ? prefilledAmount.toString() : "");
     const [note, setNote] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -218,12 +220,16 @@ const MoneyTransfer = () => {
                             <input
                                 type="number"
                                 value={amount}
+                                readOnly={!!isPaymentFlow} // Make read-only if flow is fixed
                                 onChange={(e) => {
-                                    setAmount(e.target.value);
-                                    setError("");
+                                    if (!isPaymentFlow) { // Only allow edit if not payment flow
+                                        setAmount(e.target.value);
+                                        setError("");
+                                    }
                                 }}
                                 placeholder="0"
-                                className="w-full bg-white text-center text-4xl font-bold text-gray-800 py-6 pr-3 rounded-3xl border-2 border-transparent focus:border-blue-400 focus:shadow-lg outline-none transition-all placeholder-gray-200"
+                                className={`w-full text-center text-4xl font-bold py-6 pr-3 rounded-3xl border-2 border-transparent focus:border-blue-400 outline-none transition-all placeholder-gray-200 
+                ${isPaymentFlow ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : 'bg-white text-gray-800'}`}
                             />
                         </div>
 
