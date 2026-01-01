@@ -1,10 +1,14 @@
 import pool from "../db.js";
 import admin from "../config/firebase.js";
 import jwt from "jsonwebtoken";
+import {
+    getAndLockSenderWallet,
+    processWalletPayment,
+} from "../services/payments.js";
 
 export const registerUser = async (req, res) => {
     try {
-        const { email, password, role } = req.body;
+        const { email, password, role, name } = req.body;
 
         // Check if user already exists in your database
         const userCheck = await pool.query(
@@ -33,8 +37,8 @@ export const registerUser = async (req, res) => {
 
         // Store user in your database (without password since Firebase handles it)
         const newUserResult = await pool.query(
-            "INSERT INTO users (firebase_uid, email, role, cashapp_id) VALUES ($1, $2, $3, $4) RETURNING *",
-            [firebaseUser.uid, email, role, cashappId]
+            "INSERT INTO users (firebase_uid, email, role, cashapp_id, full_name) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+            [firebaseUser.uid, email, role, cashappId, name]
         );
 
         // Create wallet account with 0 balance
@@ -42,6 +46,15 @@ export const registerUser = async (req, res) => {
             "INSERT INTO wallet_accounts (user_id, balance_cached) VALUES ($1, $2)",
             [newUserResult.rows[0].user_id, 0]
         );
+
+        // If role is vendor, create vendor record
+        if (role === "vendor") {
+            const vendorName = name || email.split("@")[0];
+            await pool.query(
+                "INSERT INTO vendors (vendor_name, owner_user_id) VALUES ($1, $2)",
+                [vendorName, newUserResult.rows[0].user_id]
+            );
+        }
 
         return res.status(201).json({
             success: true,
@@ -114,6 +127,14 @@ export const loginUser = async (req, res) => {
                 "INSERT INTO wallet_accounts (user_id, balance_cached) VALUES ($1, $2)",
                 [userResult.rows[0].user_id, 0]
             );
+
+            // If role is vendor, create vendor record
+            if (userRole === "vendor") {
+                await pool.query(
+                    "INSERT INTO vendors (vendor_name, owner_user_id) VALUES ($1, $2)",
+                    [name, userResult.rows[0].user_id]
+                );
+            }
         }
         // If user exists, ignore the role parameter
 
@@ -379,72 +400,39 @@ export const userTouserPayment = async (req, res) => {
             amount_paise <= 0 ||
             !idempotency_key
         ) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input",
-            });
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid input" });
         }
 
         if (to_user_id === from_user_id) {
-            return res.status(400).json({
-                success: false,
-                message: "Cannot transfer to self",
-            });
+            return res
+                .status(400)
+                .json({ success: false, message: "Cannot pay yourself" });
         }
 
         await client.query("BEGIN");
 
-        /* --------------------------------------------------
-           1. Check recipient user exists
-        -------------------------------------------------- */
-        const toUserResult = await client.query(
+        // validate recipient user
+        const u = await client.query(
             `SELECT user_id FROM users WHERE user_id = $1 AND "isActive" = true`,
             [to_user_id]
         );
-
-        if (toUserResult.rows.length === 0) {
+        if (!u.rows.length) {
             await client.query("ROLLBACK");
-            return res.status(404).json({
-                success: false,
-                message: "Recipient user not found",
-            });
+            return res
+                .status(404)
+                .json({ success: false, message: "Recipient not found" });
         }
 
-        /* --------------------------------------------------
-           2. Fetch & lock sender wallet
-        -------------------------------------------------- */
-        const senderWalletResult = await client.query(
-            `
-            SELECT wallet_account_id, balance_cached
-            FROM wallet_accounts
-            WHERE user_id = $1
-            FOR UPDATE
-            `,
-            [from_user_id]
+        // lock wallets
+        const senderWallet = await getAndLockSenderWallet(
+            client,
+            from_user_id,
+            amount_paise
         );
 
-        if (senderWalletResult.rows.length === 0) {
-            await client.query("ROLLBACK");
-            return res.status(400).json({
-                success: false,
-                message: "Sender wallet not found",
-            });
-        }
-
-        const senderWallet = senderWalletResult.rows[0];
-
-        if (senderWallet.balance_cached < amount_paise) {
-            await client.query("ROLLBACK");
-            return res.status(400).json({
-                success: false,
-                message: "Insufficient wallet balance",
-            });
-        }
-
-        /* --------------------------------------------------
-           3. Fetch & lock receiver wallet
-        -------------------------------------------------- */
-        const receiverWalletResult = await client.query(
+        const receiverWallet = await client.query(
             `
             SELECT wallet_account_id
             FROM wallet_accounts
@@ -454,7 +442,7 @@ export const userTouserPayment = async (req, res) => {
             [to_user_id]
         );
 
-        if (receiverWalletResult.rows.length === 0) {
+        if (!receiverWallet.rows.length) {
             await client.query("ROLLBACK");
             return res.status(400).json({
                 success: false,
@@ -462,122 +450,122 @@ export const userTouserPayment = async (req, res) => {
             });
         }
 
-        const receiverWallet = receiverWalletResult.rows[0];
+        const result = await processWalletPayment({
+            client,
+            from_user_id,
+            to_user_id,
+            amount_paise,
+            idempotency_key,
+            description: "User to user payment",
+
+            debit_wallet_account_id: senderWallet.wallet_account_id,
+            credit_account_id: receiverWallet.rows[0].wallet_account_id,
+            credit_account_type: "wallet",
+        });
+
+        await client.query("COMMIT");
+
+        return res.json({
+            success: true,
+            transaction_id: result.transaction_id,
+            wallet_balance_paise: Number(result.updated_balance),
+        });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error(err);
+        return res
+            .status(500)
+            .json({ success: false, message: "Payment failed" });
+    } finally {
+        client.release();
+    }
+};
+
+export const userToStore = async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        const { store_id, amount_paise, idempotency_key } = req.body;
+        const from_user_id = req.user_id;
+
+        if (
+            !store_id ||
+            !amount_paise ||
+            amount_paise <= 0 ||
+            !idempotency_key
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid input",
+            });
+        }
+
+        await client.query("BEGIN");
 
         /* --------------------------------------------------
-           4. Create transaction (idempotent)
+           1. Validate store + vendor wallet
         -------------------------------------------------- */
-        const transactionResult = await client.query(
+        const storeVendorRes = await client.query(
             `
-            INSERT INTO transactions (
-                transaction_kind,
-                transaction_status,
-                from_user_id,
-                to_user_id,
-                amount_paise,
-                currency,
-                idempotency_key,
-                description
-            )
-            VALUES (
-                'debit',
-                'pending',
-                $1,
-                $2,
-                $3,
-                'INR',
-                $4,
-                'User to user wallet transfer'
-            )
-            RETURNING transaction_id
+            SELECT
+                S.store_id,
+                WA.wallet_account_id AS vendor_wallet_id
+            FROM stores S
+            JOIN vendors V ON V.vendor_id = S.vendor_id
+            JOIN wallet_accounts WA ON WA.user_id = V.owner_user_id
+            WHERE S.store_id = $1
+              AND S.status = 'active'
+            FOR UPDATE
             `,
-            [from_user_id, to_user_id, amount_paise, idempotency_key]
+            [store_id]
         );
 
-        const transaction_id = transactionResult.rows[0].transaction_id;
+        if (!storeVendorRes.rows.length) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({
+                success: false,
+                message: "Store or vendor wallet not found",
+            });
+        }
+
+        const vendorWalletId = storeVendorRes.rows[0].vendor_wallet_id;
 
         /* --------------------------------------------------
-           5. Ledger entries (double entry)
+           2. Lock sender wallet
         -------------------------------------------------- */
-
-        // Debit sender
-        await client.query(
-            `
-            INSERT INTO ledger_entries (
-                transaction_id,
-                entry_type,
-                account_type,
-                account_id,
-                amount_paise
-            )
-            VALUES ($1, 'debit', 'wallet', $2, $3)
-            `,
-            [transaction_id, senderWallet.wallet_account_id, amount_paise]
-        );
-
-        // Credit receiver
-        await client.query(
-            `
-            INSERT INTO ledger_entries (
-                transaction_id,
-                entry_type,
-                account_type,
-                account_id,
-                amount_paise
-            )
-            VALUES ($1, 'credit', 'wallet', $2, $3)
-            `,
-            [transaction_id, receiverWallet.wallet_account_id, amount_paise]
-        );
-
-        /* --------------------------------------------------
-           6. Update wallet balances
-        -------------------------------------------------- */
-        const senderBalanceResult = await client.query(
-            `
-            UPDATE wallet_accounts
-            SET balance_cached = balance_cached - $1
-            WHERE wallet_account_id = $2
-            RETURNING balance_cached
-            `,
-            [amount_paise, senderWallet.wallet_account_id]
-        );
-
-        const updatedSenderBalance = senderBalanceResult.rows[0].balance_cached;
-
-        await client.query(
-            `
-            UPDATE wallet_accounts
-            SET balance_cached = balance_cached + $1
-            WHERE wallet_account_id = $2
-            `,
-            [amount_paise, receiverWallet.wallet_account_id]
+        const senderWallet = await getAndLockSenderWallet(
+            client,
+            from_user_id,
+            amount_paise
         );
 
         /* --------------------------------------------------
-           7. Mark transaction completed
+           3. Process payment using generic engine
         -------------------------------------------------- */
-        await client.query(
-            `
-            UPDATE transactions
-            SET transaction_status = 'completed'
-            WHERE transaction_id = $1
-            `,
-            [transaction_id]
-        );
+        const result = await processWalletPayment({
+            client,
+            from_user_id,
+            amount_paise,
+            idempotency_key,
+            description: "User to store payment",
+
+            debit_wallet_account_id: senderWallet.wallet_account_id,
+            credit_account_id: vendorWalletId,
+            credit_account_type: "wallet",
+
+            store_id, // 🔑 keeps store linkage
+        });
 
         await client.query("COMMIT");
 
         return res.status(200).json({
             success: true,
-            message: "Payment successful",
-            transaction_id,
-            wallet_balance_paise: Number(updatedSenderBalance),
+            transaction_id: result.transaction_id,
+            wallet_balance_paise: Number(result.updated_balance),
         });
     } catch (err) {
         await client.query("ROLLBACK");
 
-        // Handle idempotency replay
         if (err.code === "23505") {
             return res.status(409).json({
                 success: false,
@@ -585,12 +573,11 @@ export const userTouserPayment = async (req, res) => {
             });
         }
 
-        console.error("Error processing user to user payment:", err);
+        console.error("Error processing user to store payment:", err);
 
         return res.status(500).json({
             success: false,
-            message: "Error processing user to user payment",
-            error: err.message,
+            message: "Error processing user to store payment",
         });
     } finally {
         client.release();

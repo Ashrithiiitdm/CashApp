@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import axios from "../config/axiosConfig";
@@ -30,6 +30,56 @@ const MoneyTransfer = () => {
         return null;
     }
 
+    const handleStorePay = async (idempotencyKey) => {
+        try {
+            const response = await axios.post(
+                `/api/users/pay-store`,
+                {
+                    store_id: contact.store_id || contact.id,
+                    amount_paise: Math.round(parseFloat(amount) * 100),
+                    idempotency_key: idempotencyKey,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            const result = response.data;
+
+            return result;
+        } catch (err) {
+            console.error("Store payment error:", err);
+            throw err;
+        }
+    };
+
+    const handleUserPay = async (idempotencyKey) => {
+        try {
+            const response = await axios.post(
+                `/api/users/pay-user`,
+                {
+                    to_user_id: contact.user_id || contact.id,
+                    amount_paise: Math.round(parseFloat(amount) * 100),
+                    idempotency_key: idempotencyKey,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            const result = response.data;
+
+            return result;
+        } catch (err) {
+            console.error("User payment error:", err);
+            throw err;
+        }
+    };
+
     const handlePay = async () => {
         const value = parseFloat(amount);
 
@@ -49,23 +99,31 @@ const MoneyTransfer = () => {
 
             const idempotencyKey = uuidv4();
 
-            const paymentData = {
-                to_user_id: contact.id, // from recent/search
-                amount_paise: Math.round(value * 100),
-                idempotency_key: idempotencyKey,
-            };
+            let result = null;
 
-            const response = await axios.post(
-                "/api/users/pay-user",
-                paymentData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
+            if (contact.type === "store") {
+                result = await handleStorePay(idempotencyKey);
+            } else {
+                result = await handleUserPay(idempotencyKey);
+            }
 
-            const result = response.data;
+            // const paymentData = {
+            //     to_user_id: contact.id, // from recent/search
+            //     amount_paise: Math.round(value * 100),
+            //     idempotency_key: idempotencyKey,
+            // };
+
+            // const response = await axios.post(
+            //     "/api/users/pay-user",
+            //     paymentData,
+            //     {
+            //         headers: {
+            //             Authorization: `Bearer ${token}`,
+            //         },
+            //     }
+            // );
+
+            // const result = response.data;
 
             if (!result.success) {
                 console.error("Payment failed:", result.message);
@@ -75,6 +133,7 @@ const MoneyTransfer = () => {
 
             // ✅ Correct wallet update (backend is source of truth)
             if (typeof result.wallet_balance_paise === "number") {
+                console.log("Caame in number if");
                 setWallet(result.wallet_balance_paise / 100);
             }
 
@@ -83,17 +142,22 @@ const MoneyTransfer = () => {
                 amount: value,
                 contact: contact,
                 // Use backend ID if available, otherwise generate a short one for UI
-                transactionId: result.transaction_id || "TXN" + uuidv4().slice(0, 8).toUpperCase(),
-                time: new Date().toLocaleString('en-IN', { 
-                    day: 'numeric', month: 'short', year: 'numeric',
-                    hour: 'numeric', minute: 'numeric', hour12: true 
-                })
+                transactionId:
+                    result.transaction_id ||
+                    "TXN" + uuidv4().slice(0, 8).toUpperCase(),
+                time: new Date().toLocaleString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "numeric",
+                    hour12: true,
+                }),
             };
 
             // Navigate to Success Page with data
             navigate("/payment-success", { state: transactionDetails });
             // --- ✨ UPDATE END ---
-
         } catch (err) {
             console.error("Payment error:", err);
             setError("Payment failed. Please try again.");

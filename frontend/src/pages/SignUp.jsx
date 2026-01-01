@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import InputField from "../components/InputField";
 import {
     EyeIcon,
@@ -7,16 +7,17 @@ import {
     UserNameIcon,
 } from "../components/Icons";
 import GoogleSignUp from "../components/GoogleSignUp";
-import {
-    signInWithEmailAndPassword,
-} from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../config/firebase";
 import axios from "../config/axiosConfig";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/useAuthStore";
 
 const Signup = () => {
     const [activeTab, setActiveTab] = useState("User");
     const tabs = ["User", "Vendor", "Employee"];
+
+    const { login, setWallet } = useAuthStore();
 
     const [formData, setFormData] = useState({
         email: "",
@@ -68,6 +69,7 @@ const Signup = () => {
 
             // 1. Backend signup
             const response = await axios.post("/api/users/signup", {
+                name: formData.name,
                 email: formData.email,
                 password: formData.password,
                 role: role,
@@ -92,15 +94,21 @@ const Signup = () => {
                 idToken,
             });
 
-            if (loginResponse.data.success !== true) {
-                throw new Error(
-                    loginResponse.data.message ||
-                        "Login after registration failed"
-                );
+            const loginData = loginResponse.data;
+
+            if (loginData.success !== true) {
+                setError(loginData.message || "Login after signup failed");
+                return;
             }
 
-            const token = loginResponse.data.token;
-            localStorage.setItem("token", token);
+            const token = loginData.token;
+            const userData = loginData.user;
+
+            // Update global auth state
+            login(userData, token);
+            setWallet(
+                userData.wallet_balance ? userData.wallet_balance / 100 : 0
+            );
 
             // 5. Redirect
             navigate("/");
@@ -197,10 +205,7 @@ const Signup = () => {
                         icon={<EyeIcon />}
                         value={formData.confirmPassword}
                         onChange={(e) =>
-                            handleInputChange(
-                                "confirmPassword",
-                                e.target.value
-                            )
+                            handleInputChange("confirmPassword", e.target.value)
                         }
                         disabled={loading}
                     />

@@ -6,6 +6,7 @@ import {
     getRecentContacts,
     getRecentTransactions,
     searchContacts,
+    userToStore,
 } from "../controllers/userController.js";
 import { jwtAuth } from "../middleware/auth.js";
 
@@ -19,5 +20,6 @@ userRouter.get("/recent-contacts", jwtAuth, getRecentContacts);
 userRouter.get("/search-contacts", jwtAuth, searchContacts);
 userRouter.get("/recent-transactions", jwtAuth, getRecentTransactions);
 userRouter.post("/pay-user", jwtAuth, userTouserPayment);
+userRouter.post("/pay-store", jwtAuth, userToStore);
 
 export default userRouter;
