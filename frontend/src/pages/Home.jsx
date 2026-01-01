@@ -22,7 +22,7 @@ const Home = () => {
   const actions = [
     { label: 'Pay People', icon: <PayPeopleIcon />, onClick: () => navigate('/paypeople') },
     { label: 'Add money', icon: <AddMoneyIcon />, onClick: () => alert('Add money clicked!') },
-    { label: 'Recent Transactions', icon: <RecentIcon />, onClick: () => alert('Recent Transactions clicked!') },
+    { label: 'Recent Transactions', icon: <RecentIcon />, onClick: () => navigate('/recent-transactions') },
     { label: 'Check Balance', icon: <CheckBalanceIcon />, onClick: () => alert('Check Balance clicked!') },
     { label: 'Search Stores', icon: <SearchStoresIcon />, onClick: () => alert('Search Stores clicked!') },
     { label: 'Withdraw Money', icon: <WithdrawIcon />, onClick: () => alert('Withdraw Money clicked!') },

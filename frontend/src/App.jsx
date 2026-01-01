@@ -6,6 +6,7 @@ import QRScanner from './pages/QRScanner.jsx'
 import PayPeoplePage from './pages/PayPeople.jsx'
 import MoneyTransfer from './pages/MoneyTransfer.jsx'
 import PaymentSuccess from './pages/PaymentSuccess.jsx'
+import RecentTransactions from './pages/RecentTransactions.jsx'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/paypeople" element={<PayPeoplePage />} />
         <Route path="/moneytransfer" element={<MoneyTransfer />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/recent-transactions" element={<RecentTransactions />} />
       </Routes>
     </div>
   )

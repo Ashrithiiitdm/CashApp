@@ -15,9 +15,10 @@ import flipCameraImage from '../assets/icons/cameraFlip.png';
 import imageUploadImage from '../assets/icons/browse.png';
 import filterImage from '../assets/icons/filter.png';
 import dropdownImage from '../assets/icons/dropdown.png';
+import ReceiptImage from '../assets/icons/receipt.png';
 
 const ActionIconWrapper = ({ children }) => (
-  <div className="w-12 h-12 bg-[#1c86c8] rounded-full flex items-center justify-center shadow-md mb-2">
+  <div className="w-12 h-12 bg-[#1c86c8] rounded-full flex items-center justify-center shadow-md">
     {children}
   </div>
 );
@@ -68,6 +69,14 @@ export const SearchStoresIcon = () => (
       className='w-5 h-5'
     />
   </ActionIconWrapper>  
+);
+
+export const ReceiptIcon = () => (
+  <img 
+    src={ReceiptImage}
+    alt="Receipt Icon"
+    className='w-5 h-5'
+  />
 );
 
 export const AddMoneyIcon = () => (

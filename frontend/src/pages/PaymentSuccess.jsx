@@ -22,7 +22,7 @@ const PaymentSuccess = () => {
       <div className="bg-white w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col items-center text-center overflow-hidden">
         
         {/* --- Top Header with Back Button --- */}
-        <div className="w-full p-8 flex justify-start">
+        <div className="w-full px-8 pt-8 flex justify-start">
             <button 
                 onClick={() => navigate('/home')} 
                 className="p-2 -ml-2 rounded-full hover:bg-gray-50 transition-colors"
@@ -49,14 +49,14 @@ const PaymentSuccess = () => {
         </p>
 
         {/* --- Amount --- */}
-        <div className="mb-10">
+        <div className="mb-8">
             <h1 className="text-5xl font-extrabold text-gray-900">
                 ₹{Number(amount).toFixed(2)}
             </h1>
         </div>
 
         {/* --- Receipt Details Card --- */}
-        <div className="w-full px-8">
+        <div className="w-full px-8 mb-8">
             <div className="bg-[#f8f9fd] rounded-2xl p-6 border border-gray-100">
                 
                 {/* Paid To */}
@@ -86,7 +86,7 @@ const PaymentSuccess = () => {
         </div>
 
         {/* --- Bottom Action --- */}
-        <div className="mt-auto mb-10 w-full px-8">
+        <div className="mb-10 w-full px-8">
             <button 
                 onClick={() => navigate('/home')}
                 className="w-full bg-[#1581BF] text-white text-lg font-bold py-4 rounded-[25px] shadow-lg hover:bg-[#0D6A9F] active:scale-[0.98] transition-all"
