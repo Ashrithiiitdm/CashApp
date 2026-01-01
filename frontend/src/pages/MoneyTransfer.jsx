@@ -68,7 +68,7 @@ const MoneyTransfer = () => {
             const result = response.data;
 
             if (!result.success) {
-				console.error("Payment failed:", result.message);
+                console.error("Payment failed:", result.message);
                 setError("Payment failed. Please try again.");
                 return;
             }
@@ -78,7 +78,22 @@ const MoneyTransfer = () => {
                 setWallet(result.wallet_balance_paise / 100);
             }
 
-            navigate("/home");
+            // --- ✨ UPDATE START: Prepare Data for Success Page ---
+            const transactionDetails = {
+                amount: value,
+                contact: contact,
+                // Use backend ID if available, otherwise generate a short one for UI
+                transactionId: result.transaction_id || "TXN" + uuidv4().slice(0, 8).toUpperCase(),
+                time: new Date().toLocaleString('en-IN', { 
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: 'numeric', minute: 'numeric', hour12: true 
+                })
+            };
+
+            // Navigate to Success Page with data
+            navigate("/payment-success", { state: transactionDetails });
+            // --- ✨ UPDATE END ---
+
         } catch (err) {
             console.error("Payment error:", err);
             setError("Payment failed. Please try again.");
@@ -126,7 +141,7 @@ const MoneyTransfer = () => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 flex flex-col items-center justify-center px-8 py-6 space-y-8">
+                <div className="flex flex-col items-center justify-center px-8 py-6 space-y-8">
                     <div className="w-full">
                         <label className="block text-center text-gray-500 text-sm font-bold mb-4 uppercase tracking-wider">
                             Enter Amount

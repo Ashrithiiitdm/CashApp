@@ -8,6 +8,7 @@ import { useAuthStore } from "../store/useAuthStore";
 const GoogleSignUp = ({ activeTab = "User" }) => {
     const [loading, setLoading] = useState(false);
     const login = useAuthStore((state) => state.login);
+    const navigate = useNavigate();
 
     const handleGoogleSignUp = async () => {
         setLoading(true);
