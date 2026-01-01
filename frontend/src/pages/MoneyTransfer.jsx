@@ -15,7 +15,7 @@ const MoneyTransfer = () => {
   const contact = location.state?.contact;
 
   // 2. Get wallet balance from store
-  const { wallet, login } = useAuthStore(); // We might need login/setWallet to update balance later
+  const { wallet, login, setWallet } = useAuthStore(); // We might need login/setWallet to update balance later
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
@@ -28,21 +28,33 @@ const MoneyTransfer = () => {
 
   const handlePay = () => {
     const value = parseFloat(amount);
+    
+    // Validation
     if (!value || value <= 0) {
       setError("Please enter a valid amount");
       return;
     }
-    if (value > wallet) {
+    if (value > (wallet || 0)) {
       setError("Insufficient balance");
       return;
     }
 
-    // --- TODO: Add your API Call logic here ---
-    console.log(`Paying ₹${value} to ${contact.name}`);
-    alert("Payment Successful! (Logic to be implemented)");
-    
-    // For demo: Navigate back
-    navigate('/home');
+    // 2. LOGIC: Calculate new balance
+    const newBalance = (wallet || 0) - value;
+
+    // 3. LOGIC: Update State Immediately
+    setWallet(newBalance);
+
+    // 4. Generate Fake Transaction Data
+    const transactionData = {
+        amount: value,
+        contact: contact,
+        transactionId: "TXN" + Math.floor(100000 + Math.random() * 900000),
+        time: new Date().toLocaleString('en-IN', { hour: 'numeric', minute: 'numeric', hour12: true })
+    };
+
+    // 5. Navigate to Success Page with Data
+    navigate('/payment-success', { state: transactionData });
   };
 
   return (
@@ -88,7 +100,7 @@ const MoneyTransfer = () => {
         </div>
 
         {/* --- Content Section --- */}
-        <div className="flex-1 flex flex-col items-center justify-center px-8 py-6 space-y-8">
+        <div className="flex flex-col items-center justify-start px-8 py-6 space-y-8">
             
             {/* Amount Input */}
             <div className="w-full">

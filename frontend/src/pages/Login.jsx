@@ -52,15 +52,35 @@ const Login = () => {
       const response = await axios.post("/api/users/login", { idToken });
       const data = response.data;
 
+      // --- DEBUGGING LOGS (Check your Console!) ---
+      console.log("Backend Full Response:", data);
+      console.log("User Data:", data.user);
+      console.log("Wallet Data:", data.wallet);
+
       if (!data.success) {
         throw new Error(data.message || "Login failed");
       }
 
-      // 4. Update Zustand store
-      login(data.user, data.token);
+      // 4. Update Zustand store (WITH WALLET FIX)
+      // Check if wallet exists in data, or inside user, or default to 500
+      const walletBalance = data.wallet !== undefined 
+        ? data.wallet 
+        : (data.user?.wallet ?? 500.0);
+
+      // Create a user object that definitely has the wallet
+      const userWithWallet = {
+        ...data.user,
+        wallet: Number(walletBalance) 
+      };
+
+      console.log("Saving to Store:", userWithWallet); // Verify this is not null
+
+      // Call the login action
+      login(userWithWallet, data.token);
 
       // 5. Redirect
       navigate("/home");
+
     } catch (err) {
       console.error("Login error:", err);
       setError(

@@ -33,6 +33,8 @@ export const useAuthStore = create(
 
       setLoading: (loading) => set({ isLoading: loading }),
 
+      setWallet: (newBalance) => set({ wallet: newBalance }),
+
       setError: (error) => set({ error: error }),
     }),
     {

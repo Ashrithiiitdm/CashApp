@@ -73,7 +73,7 @@ const PayPeoplePage = () => {
             
             <button className="flex items-center gap-2 text-gray-500 text-lg font-medium hover:text-gray-700">
               <FilterIcon />
-              <text>Filter</text>
+              <span>Filter</span>
               <DropdownIcon />
             </button>
           </div>

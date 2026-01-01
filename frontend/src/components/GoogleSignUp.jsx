@@ -1,10 +1,16 @@
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Use router instead of window.location
 import axios from "../config/axiosConfig";
+import { useAuthStore } from "../store/useAuthStore"; // 1. Import Store
 
 const GoogleSignUp = ({ activeTab = "User" }) => {
     const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+    
+    // 2. Get login action from store
+    const { login } = useAuthStore(); 
 
     const handleGoogleSignUp = async () => {
         setLoading(true);
@@ -16,9 +22,8 @@ const GoogleSignUp = ({ activeTab = "User" }) => {
             // Get Firebase ID token
             const idToken = await user.getIdToken();
 
-            // Send to backend for authentication and user creation
+            // Send to backend
             const role = activeTab.toLowerCase();
-
             const response = await axios.post("/api/users/login", {
                 idToken,
                 role,
@@ -30,13 +35,26 @@ const GoogleSignUp = ({ activeTab = "User" }) => {
                 throw new Error(data.message || "Google sign-up failed");
             }
 
-            // Store token and user info
-            localStorage.setItem("token", data.token);
-            // localStorage.setItem("user", JSON.stringify(data.user));
+            // --- CRITICAL FIX START ---
+            // 3. Prepare data with wallet logic (same as Login.jsx)
+            const walletBalance = data.wallet !== undefined 
+                ? data.wallet 
+                : (data.user?.wallet ?? 500.0);
 
-            // Redirect to home or dashboard
+            const userWithWallet = {
+                ...data.user,
+                wallet: Number(walletBalance)
+            };
+
+            // 4. Update the Store (This automatically saves to 'auth-storage')
+            login(userWithWallet, data.token);
+            // --- CRITICAL FIX END ---
+
             alert("Google sign-up successful!");
-            window.location.href = "/";
+            
+            // 5. Navigate properly without hard reload
+            navigate("/home"); 
+
         } catch (error) {
             console.error("Error with Google sign-up:", error);
             alert(error.message || "Failed to sign up with Google");
@@ -55,6 +73,7 @@ const GoogleSignUp = ({ activeTab = "User" }) => {
                 disabled={loading}
                 className="flex items-center justify-center gap-x-2 border border-gray-300 p-2.5 hover:bg-gray-200 hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
+                {/* Google SVG Icon */}
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
