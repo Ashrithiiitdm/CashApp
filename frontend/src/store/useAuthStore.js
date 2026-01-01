@@ -10,6 +10,7 @@ export const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      wallet: null,
 
       // Actions
       login: (userData, token) =>
@@ -18,6 +19,7 @@ export const useAuthStore = create(
           token: token,
           isAuthenticated: true,
           error: null,
+          wallet: userData.wallet || 500.0,
         }),
 
       logout: () =>
@@ -26,6 +28,7 @@ export const useAuthStore = create(
           token: null,
           isAuthenticated: false,
           error: null,
+          wallet: null,
         }),
 
       setLoading: (loading) => set({ isLoading: loading }),
@@ -40,6 +43,7 @@ export const useAuthStore = create(
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
+        wallet: state.wallet, 
       }),
     }
   )
