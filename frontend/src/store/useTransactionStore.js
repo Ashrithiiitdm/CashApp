@@ -11,7 +11,7 @@ const useTransactionStore = create(
           name: 'Ashirth',
           type: 'credit', // Money coming IN (+)
           amount: 500.00,
-          date: 'January 2, 2026',
+          date: 'December 31, 2025',
           description: 'to wallet',
           avatar: 'https://i.pravatar.cc/150?u=ashirth', 
           isStore: false,
