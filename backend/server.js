@@ -3,6 +3,7 @@ import "dotenv/config";
 import cors from "cors";
 import pool from "./db.js";
 import userRouter from "./routes/userRoutes.js";
+import qrRouter from "./routes/qrRoutes.js";
 
 const port = process.env.PORT || 8000;
 
@@ -19,6 +20,7 @@ app.use(
 );
 
 app.use("/api/users", userRouter);
+app.use("/api/qr", qrRouter);
 
 async function startServer() {
     try {

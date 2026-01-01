@@ -21,7 +21,9 @@ const MoneyTransfer = () => {
     const { wallet, setWallet, token } = useAuthStore();
 
     // If prefilledAmount exists, use it; otherwise default to empty string
-    const [amount, setAmount] = useState(prefilledAmount ? prefilledAmount.toString() : "");
+    const [amount, setAmount] = useState(
+        prefilledAmount ? prefilledAmount.toString() : ""
+    );
     const [note, setNote] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -222,14 +224,15 @@ const MoneyTransfer = () => {
                                 value={amount}
                                 readOnly={!!isPaymentFlow} // Make read-only if flow is fixed
                                 onChange={(e) => {
-                                    if (!isPaymentFlow) { // Only allow edit if not payment flow
+                                    if (!isPaymentFlow) {
+                                        // Only allow edit if not payment flow
                                         setAmount(e.target.value);
                                         setError("");
                                     }
                                 }}
                                 placeholder="0"
                                 className={`w-full text-center text-4xl font-bold py-6 pr-3 rounded-3xl border-2 border-transparent focus:border-blue-400 outline-none transition-all placeholder-gray-200 
-                ${isPaymentFlow ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : 'bg-white text-gray-800'}`}
+                ${isPaymentFlow ? "bg-gray-50 text-gray-600 cursor-not-allowed" : "bg-white text-gray-800"}`}
                             />
                         </div>
 
