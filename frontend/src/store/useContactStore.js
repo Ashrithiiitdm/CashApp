@@ -1,47 +1,94 @@
-import { create } from 'zustand';
-
-// 1. Mock "Whole Database" (All users in the system)
-const MOCK_DATABASE = [
-  { id: 1, name: 'Ashirth', type: 'person', avatar: 'https://i.pravatar.cc/150?u=1' },
-  { id: 2, name: 'U-store', type: 'store', avatar: null },
-  { id: 3, name: 'John Doe', type: 'person', avatar: 'https://i.pravatar.cc/150?u=3' },
-  { id: 4, name: 'Mega Mart', type: 'store', avatar: null },
-  { id: 5, name: 'Alice Smith', type: 'person', avatar: 'https://i.pravatar.cc/150?u=5' },
-  { id: 6, name: 'Bob Wilson', type: 'person', avatar: 'https://i.pravatar.cc/150?u=6' },
-  { id: 7, name: 'Tech World', type: 'store', avatar: null },
-  { id: 8, name: 'Sarah James', type: 'person', avatar: 'https://i.pravatar.cc/150?u=8' },
-];
-
-// 2. Mock "Recent Transactions" (Subset of users)
-const RECENT_TRANSACTIONS = [
-  MOCK_DATABASE[0], // Ashirth
-  MOCK_DATABASE[1], // U-store
-];
+import { create } from "zustand";
+import axios from "../config/axiosConfig";
 
 const useContactStore = create((set, get) => ({
-  // State
-  recentContacts: RECENT_TRANSACTIONS, // Initial view
-  searchResults: [],                   // Results when searching
-  searchQuery: '',
+    // State
+    recentContacts: [], // Recent contacts from backend
+    searchResults: [], // Search results from backend
+    searchQuery: "",
+    isLoading: false,
+    error: null,
 
-  // Actions
-  setSearchQuery: (query) => {
-    set({ searchQuery: query });
+    // Actions
 
-    // SIMULATE DATABASE SEARCH
-    // If query is empty, clear results (we will fall back to recentContacts in UI)
-    if (!query.trim()) {
-      set({ searchResults: [] });
-      return;
-    }
+    // Fetch recent contacts on mount or when needed
+    fetchRecentContacts: async (user_id, token) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await axios.get("/api/users/recent-contacts", {
+                params: { user_id },
+				headers:{
+					Authorization: `Bearer ${token}`,
+				}
+            });
 
-    // Filter against the WHOLE MOCK_DATABASE
-    const results = MOCK_DATABASE.filter((contact) =>
-      contact.name.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    set({ searchResults: results });
-  },
+            if (response.data.success) {
+                set({
+                    recentContacts: response.data.contacts,
+                    isLoading: false,
+                });
+            }
+        } catch (err) {
+            console.error("Error fetching recent contacts:", err);
+            set({
+                error: err.response?.data?.message || "Failed to load contacts",
+                isLoading: false,
+                recentContacts: [],
+            });
+        }
+    },
+
+    // Search contacts as user types
+    setSearchQuery: async (query, token) => {
+        set({ searchQuery: query });
+
+        // If query is empty, clear search results
+        if (!query.trim()) {
+            set({ searchResults: [], error: null });
+            return;
+        }
+
+        // Don't search if less than 2 characters
+        if (query.trim().length < 2) {
+            set({ searchResults: [] });
+            return;
+        }
+
+        set({ isLoading: true, error: null });
+
+        try {
+            const response = await axios.get("/api/users/search-contacts", {
+                params: { q: query.trim() },
+				headers:{
+					Authorization: `Bearer ${token}`,
+				}
+            });
+
+            if (response.data.success) {
+                set({
+                    searchResults: response.data.contacts,
+                    isLoading: false,
+                });
+            }
+        } catch (err) {
+            console.error("Error searching contacts:", err);
+            set({
+                error: err.response?.data?.message || "Search failed",
+                isLoading: false,
+                searchResults: [],
+            });
+        }
+    },
+
+    // Clear all data
+    clearContacts: () => {
+        set({
+            recentContacts: [],
+            searchResults: [],
+            searchQuery: "",
+            error: null,
+        });
+    },
 }));
 
 export default useContactStore;

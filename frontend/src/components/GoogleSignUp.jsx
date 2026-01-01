@@ -3,14 +3,11 @@ import { auth } from "../config/firebase";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Use router instead of window.location
 import axios from "../config/axiosConfig";
-import { useAuthStore } from "../store/useAuthStore"; // 1. Import Store
+import { useAuthStore } from "../store/useAuthStore";
 
 const GoogleSignUp = ({ activeTab = "User" }) => {
     const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
-    
-    // 2. Get login action from store
-    const { login } = useAuthStore(); 
+    const login = useAuthStore((state) => state.login);
 
     const handleGoogleSignUp = async () => {
         setLoading(true);
@@ -35,20 +32,9 @@ const GoogleSignUp = ({ activeTab = "User" }) => {
                 throw new Error(data.message || "Google sign-up failed");
             }
 
-            // --- CRITICAL FIX START ---
-            // 3. Prepare data with wallet logic (same as Login.jsx)
-            const walletBalance = data.wallet !== undefined 
-                ? data.wallet 
-                : (data.user?.wallet ?? 500.0);
-
-            const userWithWallet = {
-                ...data.user,
-                wallet: Number(walletBalance)
-            };
-
-            // 4. Update the Store (This automatically saves to 'auth-storage')
-            login(userWithWallet, data.token);
-            // --- CRITICAL FIX END ---
+            console.log("User:", data.user);
+            // Update auth store with user data and token
+            login(data.user, data.token);
 
             alert("Google sign-up successful!");
             

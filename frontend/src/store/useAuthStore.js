@@ -19,7 +19,8 @@ export const useAuthStore = create(
           token: token,
           isAuthenticated: true,
           error: null,
-          wallet: userData.wallet || 500.0,
+          // Convert from paise to rupees
+          wallet: userData.wallet_balance ? userData.wallet_balance / 100 : 0,
         }),
 
       logout: () =>

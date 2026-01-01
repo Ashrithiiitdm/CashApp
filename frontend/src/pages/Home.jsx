@@ -30,8 +30,8 @@ const Home = () => {
 
   const navigate = useNavigate();
 
-  const wallet = useAuthStore((state) => state.wallet) || 0;
-
+  const wallet = useAuthStore((state) => state.wallet);
+  console.log("State balance", wallet);
   const clickScanner = () => {
     console.log("Scanner clicked!");
     navigate('/qrscanner');

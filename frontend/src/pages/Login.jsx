@@ -61,22 +61,12 @@ const Login = () => {
         throw new Error(data.message || "Login failed");
       }
 
-      // 4. Update Zustand store (WITH WALLET FIX)
-      // Check if wallet exists in data, or inside user, or default to 500
-      const walletBalance = data.wallet !== undefined 
-        ? data.wallet 
-        : (data.user?.wallet ?? 500.0);
+      console.log("User:", data.user);
 
-      // Create a user object that definitely has the wallet
-      const userWithWallet = {
-        ...data.user,
-        wallet: Number(walletBalance) 
-      };
+      
 
-      console.log("Saving to Store:", userWithWallet); // Verify this is not null
-
-      // Call the login action
-      login(userWithWallet, data.token);
+      // 4. Update Zustand store
+      login(data.user, data.token);
 
       // 5. Redirect
       navigate("/home");

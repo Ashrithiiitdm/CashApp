@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'; 
 import { useNavigate, useLocation } from 'react-router-dom'; 
 import useContactStore from '../store/useContactStore'; 
+import { useAuthStore } from '../store/useAuthStore';
 import { 
   SearchIcon, 
   ArrowBackIcon, 
@@ -15,10 +16,28 @@ const PayPeoplePage = () => {
   const location = useLocation(); 
   const inputRef = useRef(null);
   
+  // Get user info for fetching contacts
+  const { user, token } = useAuthStore();
+  
   // 1. Fetch state
-  const { recentContacts, searchResults, searchQuery, setSearchQuery } = useContactStore();
+  const { 
+    recentContacts, 
+    searchResults, 
+    searchQuery, 
+    setSearchQuery,
+    fetchRecentContacts,
+    isLoading,
+    error
+  } = useContactStore();
 
-  // 2. Determine list
+  // 2. Fetch recent contacts on mount
+  useEffect(() => {
+    if (user?.user_id) {
+      fetchRecentContacts(user.user_id, token);
+    }
+  }, [user?.user_id, fetchRecentContacts, token]);
+
+  // 3. Determine list
   const isSearching = searchQuery.length > 0;
   const displayList = isSearching ? searchResults : recentContacts;
 
@@ -57,7 +76,7 @@ const PayPeoplePage = () => {
               type="text"
               placeholder="Search peoples or stores"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value, token)}
               className="w-full py-3.5 pl-12 pr-4 rounded-full bg-white border border-gray-200 shadow-sm outline-none text-gray-700 text-md placeholder-gray-400 focus:border-blue-400 transition-all"
             />
             <div className="absolute left-4 top-1/2 -translate-y-1/2">
@@ -81,7 +100,18 @@ const PayPeoplePage = () => {
 
         {/* --- List Section (Gray Background #f8f9fd) --- */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-          {displayList.length > 0 ? (
+          {isLoading ? (
+            // Loading State
+            <div className="flex flex-col items-center justify-center pt-10 text-gray-400">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+              <p className="text-sm">Loading...</p>
+            </div>
+          ) : error ? (
+            // Error State
+            <div className="flex flex-col items-center justify-center pt-10 text-red-400">
+              <p className="text-sm">{error}</p>
+            </div>
+          ) : displayList.length > 0 ? (
             displayList.map((contact) => (
               <div 
                 key={contact.id} 

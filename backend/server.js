@@ -23,6 +23,7 @@ app.use("/api/users", userRouter);
 async function startServer() {
     try {
         await pool.query("SELECT 1");
+        console.log("Connected to PostgreSQL database");
 
         app.listen(port, () => {
             console.log(`Server is running on port ${port}`);
