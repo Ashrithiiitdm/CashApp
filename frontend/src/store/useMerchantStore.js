@@ -1,64 +1,88 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import axios from "../config/axiosConfig";
 
 const useMerchantStore = create(
-  persist(
-    (set) => ({
-      // 1. Initial Dummy Data (Matches your screenshot)
-      stores: [
-        {
-          id: 'S1',
-          name: 'The Ultimate Store',
-          type: 'store',
-          category: 'Grocery',
-          avatar: null, // You can add image URLs here
-        },
-        {
-          id: 'S2',
-          name: 'Akshaya Mess',
-          type: 'store',
-          category: 'Food & Dining',
-          avatar: null,
-        },
-        {
-          id: 'S3',
-          name: 'Akshaya Annexe Mess',
-          type: 'store',
-          category: 'Food & Dining',
-          avatar: null,
-        },
-        {
-          id: 'S4',
-          name: 'Cafeteria IIITDM',
-          type: 'store',
-          category: 'Cafe',
-          avatar: null,
-        },
-        {
-          id: 'S5',
-          name: 'Night Canteen Boys IIITDM',
-          type: 'store',
-          category: 'Canteen',
-          avatar: null,
-        },
-        {
-          id: 'S6',
-          name: 'Night Canteen Girls',
-          type: 'store',
-          category: 'Canteen',
-          avatar: null,
-        },
-      ],
-      searchQuery: '',
+    persist(
+        (set, get) => ({
+            // State
+            stores: [],
+            searchQuery: "",
+            loading: false,
+            error: null,
+            currentStore: null,
 
-      // 2. Actions
-      setSearchQuery: (query) => set({ searchQuery: query }),
-    }),
-    {
-      name: 'merchant-storage',
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
+            // Actions
+            setSearchQuery: (query) => set({ searchQuery: query }),
+
+            // Search stores API call
+            searchStores: async (query = "") => {
+                set({ loading: true, error: null });
+                try {
+                    const response = await axios.get("/api/stores/search", {
+                        params: { query },
+                    });
+
+                    if (response.data.success) {
+                        set({ stores: response.data.stores, loading: false });
+                    } else {
+                        set({
+                            error: "Failed to fetch stores",
+                            loading: false,
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error searching stores:", error);
+                    set({
+                        error:
+                            error.response?.data?.message ||
+                            "Error searching stores",
+                        loading: false,
+                        stores: [],
+                    });
+                }
+            },
+
+            // Fetch store details with items
+            fetchStoreDetails: async (storeId) => {
+                set({ loading: true, error: null });
+                try {
+                    const response = await axios.get(`/api/stores/${storeId}`);
+
+                    if (response.data.success) {
+                        set({
+                            currentStore: response.data.store,
+                            loading: false,
+                        });
+                        return response.data.store;
+                    } else {
+                        set({
+                            error: "Failed to fetch store details",
+                            loading: false,
+                        });
+                        return null;
+                    }
+                } catch (error) {
+                    console.error("Error fetching store details:", error);
+                    set({
+                        error:
+                            error.response?.data?.message ||
+                            "Error fetching store details",
+                        loading: false,
+                        currentStore: null,
+                    });
+                    return null;
+                }
+            },
+
+            // Clear current store
+            clearCurrentStore: () => set({ currentStore: null }),
+        }),
+        {
+            name: "merchant-storage",
+            storage: createJSONStorage(() => localStorage),
+        }
+    )
 );
 
 export default useMerchantStore;

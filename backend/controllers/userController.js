@@ -485,7 +485,7 @@ export const userToStore = async (req, res) => {
     const client = await pool.connect();
 
     try {
-        const { store_id, amount_paise, idempotency_key } = req.body;
+        const { store_id, amount_paise, idempotency_key, metadata } = req.body;
         const from_user_id = req.user_id;
 
         if (
@@ -554,6 +554,7 @@ export const userToStore = async (req, res) => {
             credit_account_type: "wallet",
 
             store_id, // 🔑 keeps store linkage
+            metadata: metadata || {}, // Store cart items
         });
 
         await client.query("COMMIT");

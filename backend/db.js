@@ -5,8 +5,8 @@ const { Pool } = pg;
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 20, // Maximum number of connections in pool
-    idleTimeoutMillis: 30000, // Close idle connections after 30s
-    connectionTimeoutMillis: 2000, // Return error if can't connect within 2s
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000, // 10 secondss
 });
 
 pool.on("error", (err) => {

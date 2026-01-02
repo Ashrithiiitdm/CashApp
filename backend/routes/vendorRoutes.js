@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { createVendor, getVendors } from "../controllers/vendorController";
-import { jwtAuth } from "../middleware/auth";
+import { createVendor, getVendors } from "../controllers/vendorController.js";
+import { jwtAuth } from "../middleware/auth.js";
 
 const vendorRouter = Router();
 

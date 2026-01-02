@@ -1,17 +1,17 @@
-import pool from "../db";
+import pool from "../db.js";
 
 export const addStore = async (req, res) => {
     try {
-        const { name, location } = req.body;
+        const { name, location, description } = req.body;
 
         const vendor_id = req.user_id;
 
         await pool.query(
             `
-                INSERT INTO Stores (vendor_id, display_name, status, location_text)
-                VALUES ($1, $2, 'active', $3)
+                INSERT INTO Stores (vendor_id, display_name, status, location_text, description)
+                VALUES ($1, $2, 'active', $3, $4)
             `,
-            [vendor_id, name, location]
+            [vendor_id, name, location, description]
         );
 
         return res.status(201).json({
@@ -34,7 +34,7 @@ export const getStores = async (req, res) => {
         // Get name, location, status
         const result = await pool.query(
             `
-                SELECT display_name, location_text, status
+                SELECT store_id, display_name, location_text, status, description
                 FROM Stores
             `
         );
@@ -48,6 +48,90 @@ export const getStores = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error fetching stores",
+            error: err.message,
+        });
+    }
+};
+
+export const searchStores = async (req, res) => {
+    try {
+        const { query } = req.query;
+
+        let sqlQuery = `
+            SELECT store_id, display_name, location_text, status, description
+            FROM Stores
+            WHERE status = 'active'
+        `;
+        const params = [];
+
+        if (query) {
+            sqlQuery += ` AND (display_name ILIKE $1 OR location_text ILIKE $1)`;
+            params.push(`%${query}%`);
+        }
+
+        sqlQuery += ` ORDER BY display_name ASC`;
+
+        const result = await pool.query(sqlQuery, params);
+
+        return res.status(200).json({
+            success: true,
+            stores: result.rowCount > 0 ? result.rows : [],
+        });
+    } catch (err) {
+        console.error("Error searching stores:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Error searching stores",
+            error: err.message,
+        });
+    }
+};
+
+export const getStoreDetails = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+
+        // Get store details
+        const storeResult = await pool.query(
+            `
+                SELECT store_id, display_name, location_text, status, description, created_at
+                FROM Stores
+                WHERE store_id = $1
+            `,
+            [storeId]
+        );
+
+        if (storeResult.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Store not found",
+            });
+        }
+
+        // Get items for this store
+        const itemsResult = await pool.query(
+            `
+                SELECT item_id, item_name, description, quantity, unit, 
+                       price_per_unit_paise, categories, created_at
+                FROM Items
+                WHERE store_id = $1
+                ORDER BY item_name ASC
+            `,
+            [storeId]
+        );
+
+        const store = storeResult.rows[0];
+        store.items = itemsResult.rows;
+
+        return res.status(200).json({
+            success: true,
+            store: storeResult.rowCount > 0 ? store : [],
+        });
+    } catch (err) {
+        console.error("Error fetching store details:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching store details",
             error: err.message,
         });
     }

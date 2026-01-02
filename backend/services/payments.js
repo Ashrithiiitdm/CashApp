@@ -15,6 +15,7 @@ export const processWalletPayment = async ({
     // transaction linkage
     to_user_id = null,
     store_id = null,
+    metadata = {}, // Add metadata parameter
 }) => {
     /* --------------------------------------------------
        1. Create transaction
@@ -30,7 +31,8 @@ export const processWalletPayment = async ({
             amount_paise,
             currency,
             idempotency_key,
-            description
+            description,
+            metadata
         )
         VALUES (
             'debit',
@@ -38,7 +40,8 @@ export const processWalletPayment = async ({
             $1, $2, $3, $4,
             'INR',
             $5,
-            $6
+            $6,
+            $7
         )
         RETURNING transaction_id
         `,
@@ -49,6 +52,7 @@ export const processWalletPayment = async ({
             amount_paise,
             idempotency_key,
             description,
+            JSON.stringify(metadata),
         ]
     );
 
@@ -105,7 +109,7 @@ export const processWalletPayment = async ({
     const updated_balance = balanceRes.rows[0].balance_cached;
 
     // Credit receiver wallet (only if credit side is also a wallet)
-    if (credit_account_type === 'wallet') {
+    if (credit_account_type === "wallet") {
         await client.query(
             `
             UPDATE wallet_accounts

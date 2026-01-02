@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
+import useCartStore from "../store/useCartStore";
 import axios from "../config/axiosConfig";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -16,9 +17,11 @@ const MoneyTransfer = () => {
     const contact = location.state?.contact;
     const prefilledAmount = location.state?.prefilledAmount;
     const isPaymentFlow = location.state?.isPaymentFlow;
+    const cartItems = location.state?.cartItems;
 
     // 🔑 Correct store usage
     const { wallet, setWallet, token } = useAuthStore();
+    const { clearCart } = useCartStore();
 
     // If prefilledAmount exists, use it; otherwise default to empty string
     const [amount, setAmount] = useState(
@@ -42,6 +45,7 @@ const MoneyTransfer = () => {
                     store_id: contact.store_id || contact.id,
                     amount_paise: Math.round(parseFloat(amount) * 100),
                     idempotency_key: idempotencyKey,
+                    metadata: cartItems ? { items: cartItems } : {},
                 },
                 {
                     headers: {
@@ -111,37 +115,23 @@ const MoneyTransfer = () => {
                 result = await handleUserPay(idempotencyKey);
             }
 
-            // const paymentData = {
-            //     to_user_id: contact.id, // from recent/search
-            //     amount_paise: Math.round(value * 100),
-            //     idempotency_key: idempotencyKey,
-            // };
-
-            // const response = await axios.post(
-            //     "/api/users/pay-user",
-            //     paymentData,
-            //     {
-            //         headers: {
-            //             Authorization: `Bearer ${token}`,
-            //         },
-            //     }
-            // );
-
-            // const result = response.data;
-
             if (!result.success) {
                 console.error("Payment failed:", result.message);
                 setError("Payment failed. Please try again.");
                 return;
             }
 
-            // ✅ Correct wallet update (backend is source of truth)
+            // Correct wallet update (backend is source of truth)
             if (typeof result.wallet_balance_paise === "number") {
                 console.log("Caame in number if");
                 setWallet(result.wallet_balance_paise / 100);
             }
+            if (contact.type === "store") {
+                clearCart();
+            }
 
-            // --- ✨ UPDATE START: Prepare Data for Success Page ---
+            // 
+            // ---  UPDATE START: Prepare Data for Success Page ---
             const transactionDetails = {
                 amount: value,
                 contact: contact,
