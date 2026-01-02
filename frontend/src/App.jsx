@@ -9,6 +9,7 @@ import PaymentSuccess from './pages/PaymentSuccess.jsx'
 import RecentTransactions from './pages/RecentTransactions.jsx'
 import SearchStores from './pages/SearchStores.jsx'
 import StoreDetails from './pages/StoreDetails.jsx'
+import CheckBalance from './pages/CheckBalance.jsx'
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="/recent-transactions" element={<RecentTransactions />} />
         <Route path="/search-stores" element={<SearchStores />} />
         <Route path="/store-details" element={<StoreDetails />} />
+        <Route path="/check-balance" element={<CheckBalance />} />
       </Routes>
     </div>
   )

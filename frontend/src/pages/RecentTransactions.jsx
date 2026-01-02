@@ -80,7 +80,7 @@ const RecentTransactions = () => {
                 {/* --- Header Section --- */}
                 <div className="bg-white pt-8 pb-4 px-6 shadow-sm z-10 rounded-b-3xl">
                     <button
-                        onClick={() => navigate("/home")}
+                        onClick={() => navigate(-1)}
                         className="mb-5 hover:opacity-70 transition-opacity"
                     >
                         <ArrowBackIcon className="w-6 h-6 text-gray-700" />

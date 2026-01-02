@@ -23,7 +23,7 @@ const Home = () => {
     { label: 'Pay People', icon: <PayPeopleIcon />, onClick: () => navigate('/paypeople') },
     { label: 'Add money', icon: <AddMoneyIcon />, onClick: () => alert('Add money clicked!') },
     { label: 'Recent Transactions', icon: <RecentIcon />, onClick: () => navigate('/recent-transactions') },
-    { label: 'Check Balance', icon: <CheckBalanceIcon />, onClick: () => alert('Check Balance clicked!') },
+    { label: 'Check Balance', icon: <CheckBalanceIcon />, onClick: () => navigate('/check-balance') },
     { label: 'Search Stores', icon: <SearchStoresIcon />, onClick: () => navigate('/search-stores') },
     { label: 'Withdraw Money', icon: <WithdrawIcon />, onClick: () => alert('Withdraw Money clicked!') },
   ];
@@ -31,7 +31,9 @@ const Home = () => {
   const navigate = useNavigate();
 
   const wallet = useAuthStore((state) => state.wallet);
+  const user = useAuthStore((state) => state.user);
   console.log("State balance", wallet);
+  console.log("User data", user);
   const clickScanner = () => {
     console.log("Scanner clicked!");
     navigate('/qrscanner');
