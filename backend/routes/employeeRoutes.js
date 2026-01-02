@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { jwtAuth } from "../middleware/auth";
+import { jwtAuth } from "../middleware/auth.js";
 import upload from "../middleware/multer";
 import {
     getAllEmployees,
     updateDetails,
-} from "../controllers/employeeController";
+} from "../controllers/employeeController.js";
 const employeeRouter = Router();
 
 employeeRouter.post(

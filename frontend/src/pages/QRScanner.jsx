@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { useNavigate } from "react-router-dom";
+import axios from "../config/axiosConfig";
 import {
   ArrowBackIcon,
   FlipCameraIcon,
@@ -82,9 +83,64 @@ const QRScanner = () => {
     } catch { }
 
     console.log("Scanned:", decodedText);
-    alert(`Scanned: ${decodedText}`);
+    alert(`Scanned QR Data:\n${decodedText}`);
 
-    // navigate("/payment", { state: { id: decodedText } });
+    // Parse QR data and resolve it
+    try {
+      const qrData = JSON.parse(decodedText);
+      
+      // Transform QR data to backend format
+      // QR format: {"id": "...", "type": "user"/"store"}
+      // Backend expects: {"user_id": "..."} or {"store_id": "..."}
+      const backendPayload = {};
+      
+      if (qrData.type === "user") {
+        backendPayload.user_id = qrData.id;
+      } else if (qrData.type === "store") {
+        backendPayload.store_id = qrData.id;
+      } else {
+        alert("Invalid QR code type");
+        isLockedRef.current = false;
+        return;
+      }
+      
+      console.log("Calling backend with:", backendPayload);
+      
+      // Call backend to resolve the QR
+      const response = await axios.post("/api/qr/resolve-static", backendPayload);
+      
+      console.log("Backend response:", response.data);
+      
+      if (response.data.success) {
+        const { receiverType, receiverId, receiverName } = response.data;
+        
+        // Create contact object for MoneyTransfer
+        const contact = {
+          type: receiverType, // "user" or "store"
+          id: receiverId,
+          name: receiverName,
+        };
+        
+        // Add specific ID field based on type
+        if (receiverType === "user") {
+          contact.user_id = receiverId;
+        } else if (receiverType === "store") {
+          contact.store_id = receiverId;
+        }
+        
+        console.log("Navigating to MoneyTransfer with contact:", contact);
+        
+        // Navigate to MoneyTransfer with contact
+        navigate("/moneytransfer", { state: { contact } });
+      } else {
+        alert(response.data.message || "Invalid QR code");
+        isLockedRef.current = false;
+      }
+    } catch (err) {
+      console.error("QR Resolution error:", err);
+      alert(`Error: ${err.response?.data?.message || err.message || "Invalid QR code format or server error"}`);
+      isLockedRef.current = false;
+    }
   };
 
   const safeStopScanner = async () => {

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCodeFromLib from 'react-qr-code'; 
 import { useAuthStore } from '../store/useAuthStore';
