@@ -1,5 +1,76 @@
 import pool from "../db.js";
 
+export const getStoreRecentTransactions = async (req, res) => {
+    try {
+        const { store_id } = req.params;
+        const search = req.query.search?.trim();
+
+        if (!store_id) {
+            return res.status(400).json({
+                success: false,
+                message: "store_id is required",
+            });
+        }
+
+        let baseQuery = `
+            SELECT
+                T.transaction_id,
+
+                CASE
+                    WHEN T.transaction_kind = 'debit' THEN 'credit'
+                    WHEN T.transaction_kind = 'credit' THEN 'debit'
+                END AS transaction_kind,
+
+                T.transaction_status,
+                T.amount_paise,
+                T.currency,
+                T.created_at,
+                T.metadata,
+
+                U.user_id,
+                U.full_name,
+                U.cashapp_id
+
+            FROM transactions T
+            JOIN users U
+                ON U.user_id = T.from_user_id
+            WHERE T.store_id = $1
+              AND T.transaction_status = 'completed'
+        `;
+
+        const params = [store_id];
+
+        if (search) {
+            baseQuery += `
+                AND (
+                    U.full_name ILIKE $2
+                 OR U.cashapp_id ILIKE $2
+                )
+            `;
+            params.push(`%${search}%`);
+        }
+
+        const finalQuery = `
+            ${baseQuery}
+            ORDER BY T.created_at DESC
+            LIMIT 20
+        `;
+
+        const { rows } = await pool.query(finalQuery, params);
+
+        return res.json({
+            success: true,
+            recent_transactions: rows,
+        });
+    } catch (err) {
+        console.error("Error fetching store recent transactions:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching store recent transactions",
+        });
+    }
+};
+
 export const addStore = async (req, res) => {
     try {
         const { name, location, description } = req.body;
