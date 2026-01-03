@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import useCartStore from "../store/useCartStore";
 import axios from "../config/axiosConfig";
 import { v4 as uuidv4 } from "uuid";
+import { StripeCheckout } from "../components/StripeCheckout";
 import {
     ArrowBackIcon,
     UserNameIcon,
@@ -34,6 +35,7 @@ const MoneyTransfer = () => {
     const [note, setNote] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [showStripeCheckout, setShowStripeCheckout] = useState(false);
 
     if (!contact) {
         navigate("/paypeople");
@@ -70,48 +72,73 @@ const MoneyTransfer = () => {
 
     // --- New Handlers for Add/Withdraw ---
     const processAddMoney = async (value) => {
-        // 1. Simulate Payment Gateway Opening
-        const confirmed = window.confirm(
-            `Redirecting to Payment Gateway...\n\nPay ₹${value} via UPI/Card?`
-        );
-        
-        if (!confirmed) throw new Error("Transaction Cancelled by User");
+        // Show Stripe checkout modal
+        setShowStripeCheckout(true);
+        return null; // Will be handled by Stripe callback
+    };
 
-        // 2. Simulate API Delay & Success
-        await new Promise(resolve => setTimeout(resolve, 1500));
+    const handleStripeSuccess = async (result) => {
+        try {
+            setShowStripeCheckout(false);
 
-        // 3. Update Local State (Since we might not have a backend endpoint yet)
-        // In a real app, you would call: await axios.post('/api/wallet/add', ...)
-        const newBalance = wallet + value;
-        setWallet(newBalance);
+            // Update wallet from backend response
+            if (result.newBalance) {
+                setWallet(result.newBalance / 100);
+            }
 
-        return {
-            success: true,
-            transaction_id: "ADD-" + uuidv4().slice(0, 8).toUpperCase(),
-            // Mocking the backend response structure
-        };
+            // Navigate to success page
+            const transactionDetails = {
+                amount: parseFloat(amount),
+                contact: contact,
+                transactionId: result.transaction_id,
+                time: new Date().toLocaleString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "numeric",
+                    hour12: true,
+                }),
+                type: "Credit",
+            };
+
+            navigate("/payment-success", { state: transactionDetails });
+        } catch (err) {
+            console.error("Error handling stripe success:", err);
+            setError("Error processing payment");
+        }
+    };
+
+    const handleStripeCancel = () => {
+        setShowStripeCheckout(false);
     };
 
     const processWithdraw = async (value) => {
-        // 1. Simulate Bank Details Collection
-        const details = window.prompt(
-            "Enter Bank Account Number or UPI ID for withdrawal:"
-        );
+        try {
+            const response = await axios.post(
+                "/api/wallet/withdraw",
+                { amount: value },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
-        if (!details) throw new Error("Bank details are required");
+            if (response.data.success) {
+                setWallet(response.data.newBalance / 100);
 
-        // 2. Simulate Processing
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // 3. Update Local State
-        // In a real app: await axios.post('/api/wallet/withdraw', { details, ... })
-        const newBalance = wallet - value;
-        setWallet(newBalance);
-
-        return {
-            success: true,
-            transaction_id: "WDR-" + uuidv4().slice(0, 8).toUpperCase(),
-        };
+                return {
+                    success: true,
+                    transaction_id: response.data.refunds?.[0] || "WITHDRAW",
+                    transactionsUsed: response.data.transactionsUsed,
+                };
+            } else {
+                throw new Error(response.data.message || "Withdrawal failed");
+            }
+        } catch (err) {
+            throw new Error(
+                err.response?.data?.message ||
+                    err.message ||
+                    "Withdrawal failed"
+            );
+        }
     };
 
     const handlePay = async () => {
@@ -138,6 +165,8 @@ const MoneyTransfer = () => {
             // --- BRANCHING LOGIC ---
             if (isAddMoney) {
                 result = await processAddMoney(value);
+                // Don't navigate yet - will be handled by Stripe callback
+                return;
             } else if (isWithdraw) {
                 result = await processWithdraw(value);
             } else if (contact.type === "store") {
@@ -147,9 +176,11 @@ const MoneyTransfer = () => {
             }
 
             // Handle API Failures
-            if (!result.success) {
-                console.error("Payment failed:", result.message);
-                setError(result.message || "Payment failed. Please try again.");
+            if (!result || !result.success) {
+                console.error("Payment failed:", result?.message);
+                setError(
+                    result?.message || "Payment failed. Please try again."
+                );
                 return;
             }
 
@@ -157,7 +188,7 @@ const MoneyTransfer = () => {
             if (typeof result.wallet_balance_paise === "number") {
                 setWallet(result.wallet_balance_paise / 100);
             }
-            
+
             if (contact.type === "store") {
                 clearCart();
             }
@@ -166,7 +197,9 @@ const MoneyTransfer = () => {
             const transactionDetails = {
                 amount: value,
                 contact: contact,
-                transactionId: result.transaction_id || "TXN" + uuidv4().slice(0, 8).toUpperCase(),
+                transactionId:
+                    result.transaction_id ||
+                    "TXN" + uuidv4().slice(0, 8).toUpperCase(),
                 time: new Date().toLocaleString("en-IN", {
                     day: "numeric",
                     month: "short",
@@ -176,17 +209,13 @@ const MoneyTransfer = () => {
                     hour12: true,
                 }),
                 // Add a flag to customize success message if needed
-                type: isAddMoney ? 'Credit' : 'Debit' 
+                type: isAddMoney ? "Credit" : "Debit",
             };
 
             navigate("/payment-success", { state: transactionDetails });
-
         } catch (err) {
             console.error("Payment error:", err);
-            // Don't show "Payment failed" if user just cancelled the prompt
-            if (err.message !== "Transaction Cancelled by User" && err.message !== "Bank details are required") {
-                 setError("Transaction failed. Please try again.");
-            }
+            setError(err.message || "Transaction failed. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -210,13 +239,16 @@ const MoneyTransfer = () => {
     const getIcon = () => {
         if (isAddMoney) return <WalletIcon className="text-blue-500" />; // Ensure specific styling if needed
         if (isWithdraw) return <WithdrawIcon className="text-blue-500" />;
-        return contact.type === "store" ? <SearchStoresIcon /> : <UserNameIcon />;
+        return contact.type === "store" ? (
+            <SearchStoresIcon />
+        ) : (
+            <UserNameIcon />
+        );
     };
 
     return (
         <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 font-sans">
             <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
-                
                 {/* Header */}
                 <div className="bg-white pt-8 pb-6 px-6 shadow-sm z-10 flex flex-col items-center relative">
                     <button
@@ -253,6 +285,39 @@ const MoneyTransfer = () => {
 
                 {/* Content */}
                 <div className="flex flex-col items-center justify-center px-8 py-6 space-y-8">
+                    {/* Stripe Checkout Modal */}
+                    {showStripeCheckout && isAddMoney && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+                                <h3 className="text-xl font-bold mb-4 text-gray-800">
+                                    Add Money via Stripe
+                                </h3>
+                                <p className="text-gray-600 mb-4">
+                                    Amount:{" "}
+                                    <span className="font-bold text-lg">
+                                        ₹{amount}
+                                    </span>
+                                </p>
+                                <StripeCheckout
+                                    amount={amount}
+                                    onSuccess={handleStripeSuccess}
+                                    onCancel={handleStripeCancel}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Info box for withdrawal */}
+                    {isWithdraw && (
+                        <div className="w-full bg-amber-50 border border-amber-200 rounded-xl p-4">
+                            <p className="text-sm text-amber-800 text-center">
+                                <strong>Demo Mode:</strong> Withdrawal simulated
+                                via Stripe refund. Enter amount to withdraw from
+                                your wallet.
+                            </p>
+                        </div>
+                    )}
+
                     <div className="w-full">
                         <label className="block text-center text-gray-500 text-sm font-bold mb-4 uppercase tracking-wider">
                             Enter Amount
@@ -290,7 +355,11 @@ const MoneyTransfer = () => {
                             type="text"
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder={isWithdraw ? "Reason (Optional)" : "Add a note (optional)"}
+                            placeholder={
+                                isWithdraw
+                                    ? "Reason (Optional)"
+                                    : "Add a note (optional)"
+                            }
                             className="w-full bg-white text-center py-4 rounded-2xl border border-gray-200 text-gray-700 placeholder-gray-400 focus:border-blue-400 outline-none transition-all shadow-sm"
                         />
                     </div>
