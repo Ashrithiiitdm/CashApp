@@ -183,64 +183,96 @@ export const getRecentTransactions = async (req, res) => {
         const user_id = req.user_id;
         const search = req.query.search?.trim();
 
-        let query = `
-            SELECT
-                T.transaction_id,
-                T.transaction_kind,
-                T.transaction_status,
-                T.amount_paise,
-                T.currency,
-                T.created_at,
+        let baseQuery = `
+            (
+                -- Payments: user ↔ user, user → store
+                SELECT
+                    T.transaction_id,
+                    'payment' AS transaction_category,
+                    T.transaction_kind,
+                    T.transaction_status,
+                    T.amount_paise,
+                    T.currency,
+                    T.created_at,
 
-                -- user ↔ user
-                U2.user_id       AS peer_user_id,
-                U2.full_name     AS peer_name,
-                U2.cashapp_id    AS peer_cashapp_id,
+                    U2.user_id    AS peer_user_id,
+                    U2.full_name  AS peer_name,
+                    U2.cashapp_id AS peer_cashapp_id,
 
-                -- user → store
-                S.store_id,
-                S.display_name AS store_name
+                    S.store_id,
+                    S.display_name AS store_name,
 
-            FROM transactions T
+                    NULL::text AS transaction_type,
+                    NULL::text AS stripe_payment_intent_id
 
-            -- peer user (only when user ↔ user)
-            LEFT JOIN users U2
-              ON (
-                   (T.from_user_id = $1 AND U2.user_id = T.to_user_id)
-                OR (T.to_user_id   = $1 AND U2.user_id = T.from_user_id)
-              )
+                FROM transactions T
+                LEFT JOIN users U2
+                  ON (
+                       (T.from_user_id = $1 AND U2.user_id = T.to_user_id)
+                    OR (T.to_user_id   = $1 AND U2.user_id = T.from_user_id)
+                  )
+                LEFT JOIN stores S ON S.store_id = T.store_id
+                WHERE (T.from_user_id = $1 OR T.to_user_id = $1)
+                  AND T.transaction_status = 'completed'
+            )
 
-            -- store (only when user → store)
-            LEFT JOIN stores S
-              ON S.store_id = T.store_id
+            UNION ALL
 
-            WHERE
-                T.from_user_id = $1
-             OR T.to_user_id   = $1
+            (
+                -- Wallet transactions
+                SELECT
+                    WT.wallet_transaction_id AS transaction_id,
+                    'wallet' AS transaction_category,
+                    CASE 
+                        WHEN WT.transaction_type = 'ADD_MONEY' THEN 'credit'
+                        WHEN WT.transaction_type = 'WITHDRAW'  THEN 'debit'
+                    END AS transaction_kind,
+                    'completed' AS transaction_status,
+                    WT.amount_paise,
+                    WT.currency,
+                    WT.created_at,
+
+                    NULL::text AS peer_user_id,
+                    CASE 
+                        WHEN WT.transaction_type = 'ADD_MONEY' THEN 'Add Money'
+                        WHEN WT.transaction_type = 'WITHDRAW'  THEN 'Withdraw'
+                    END AS peer_name,
+                    NULL::text AS peer_cashapp_id,
+                    NULL::text AS store_id,
+                    NULL::text AS store_name,
+
+                    WT.transaction_type,
+                    WT.stripe_payment_intent_id
+
+                FROM wallet_transactions WT
+                WHERE WT.user_id = $1
+                  AND WT.status = 'SUCCESS'
+            )
         `;
 
         const params = [user_id];
 
-        // 🔍 Optional search (name or cashapp_id)
         if (search) {
-            query += `
-                AND (
-                    U2.full_name ILIKE $2
-                 OR U2.cashapp_id ILIKE $2
-                 OR S.display_name ILIKE $2
+            baseQuery = `
+                SELECT * FROM (${baseQuery}) all_tx
+                WHERE (
+                    peer_name ILIKE $2
+                 OR peer_cashapp_id ILIKE $2
+                 OR store_name ILIKE $2
                 )
             `;
             params.push(`%${search}%`);
         }
 
-        query += `
-            ORDER BY T.created_at DESC
+        const finalQuery = `
+            ${baseQuery}
+            ORDER BY created_at DESC
             LIMIT 20
         `;
 
-        const { rows } = await pool.query(query, params);
+        const { rows } = await pool.query(finalQuery, params);
 
-        return res.status(200).json({
+        return res.json({
             success: true,
             recent_transactions: rows.length ? rows : [],
         });
