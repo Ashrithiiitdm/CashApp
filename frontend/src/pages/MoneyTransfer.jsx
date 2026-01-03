@@ -9,8 +9,8 @@ import {
     ArrowBackIcon,
     UserNameIcon,
     SearchStoresIcon,
-    WalletIcon, // Assumed available, or reuse another icon
-    WithdrawIcon, // Assumed available, or reuse another icon
+    WalletIcon, 
+    WithdrawIcon, 
 } from "../components/Icons";
 
 const MoneyTransfer = () => {
@@ -237,7 +237,7 @@ const MoneyTransfer = () => {
 
     // Helper for Icon
     const getIcon = () => {
-        if (isAddMoney) return <WalletIcon className="text-blue-500" />; // Ensure specific styling if needed
+        if (isAddMoney) return <WalletIcon className="text-blue-500" />; 
         if (isWithdraw) return <WithdrawIcon className="text-blue-500" />;
         return contact.type === "store" ? (
             <SearchStoresIcon />
@@ -285,10 +285,11 @@ const MoneyTransfer = () => {
 
                 {/* Content */}
                 <div className="flex flex-col items-center justify-center px-8 py-6 space-y-8">
-                    {/* Stripe Checkout Modal */}
+                    
+                    {/* ✅ UPDATED: Stripe Checkout Modal - Uses absolute positioning to stay inside phone */}
                     {showStripeCheckout && isAddMoney && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+                        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in zoom-in-95">
+                            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                                 <h3 className="text-xl font-bold mb-4 text-gray-800">
                                     Add Money via Stripe
                                 </h3>

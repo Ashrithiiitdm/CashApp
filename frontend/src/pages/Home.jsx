@@ -16,8 +16,18 @@ import {
 import dummayQR from '../assets/icons/dummyQR.png'; // Dummy QR code image
 
 const Home = () => {
-  // Data for the bottom action grid
+  const navigate = useNavigate();
 
+  // 1. Get wallet, user, and the logout function
+  const wallet = useAuthStore((state) => state.wallet);
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
+  const handleLogout = () => {
+    // Clear state and redirect
+    if (logout) logout();
+    navigate('/login');
+  };
 
   const actions = [
     { label: 'Pay People', icon: <PayPeopleIcon />, onClick: () => navigate('/paypeople') },
@@ -52,12 +62,6 @@ const Home = () => {
     },
   ];
 
-  const navigate = useNavigate();
-
-  const wallet = useAuthStore((state) => state.wallet);
-  const user = useAuthStore((state) => state.user);
-  console.log("State balance", wallet);
-  console.log("User data", user);
   const clickScanner = () => {
     console.log("Scanner clicked!");
     navigate('/qrscanner');
@@ -65,7 +69,6 @@ const Home = () => {
 
   const clickSearch = () => {
     console.log("Search clicked!");
-    // Pass { state: { focusSearch: true } } to the next page
     navigate('/paypeople', { state: { focusSearch: true } });
   };
 
@@ -84,13 +87,7 @@ const Home = () => {
         }
       `}</style>
 
-      {/* Main Card - Matching Signup Page Dimensions & Shape
-         - w-11/12 max-w-[420px]
-         - min-h-[750px]
-         - rounded-[40px]
-         - shadow-2xl
-         - Added 'overflow-hidden' so inner colors don't break the rounded corners
-      */}
+      {/* Main Card */}
       <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
 
         {/* --- Header Section (White) --- */}
@@ -99,10 +96,37 @@ const Home = () => {
             {/* Left Logo */}
             <LogoIcon />
 
-            {/* Right Balance Pill */}
-            <div className="flex items-center bg-[#eef7ee] border border-[#dcf0dc] rounded-full px-4 py-1.5">
-              <span className="text-[#36a736] font-bold mr-2">₹ {Number(wallet).toFixed(2)}</span>
-              <WalletIcon />
+            {/* Right Side: Wallet + Logout Group */}
+            <div className="flex items-center gap-3">
+              
+              {/* Balance Pill */}
+              <div className="flex items-center bg-[#eef7ee] border border-[#dcf0dc] rounded-full px-4 py-1.5">
+                <span className="text-[#36a736] font-bold mr-2">₹ {Number(wallet).toFixed(2)}</span>
+                <WalletIcon />
+              </div>
+
+              {/* Logout Button */}
+              <button 
+                onClick={handleLogout}
+                className="p-2 bg-red-50 hover:bg-red-100 rounded-full border border-red-100 transition-colors flex items-center justify-center group"
+                title="Logout"
+              >
+                <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className="text-red-500 group-hover:text-red-600"
+                >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -129,7 +153,6 @@ const Home = () => {
               alt='QR code scanner'
               className='p-2'
             />
-
 
             {/* Animated Scanner Line */}
             <div className="absolute left-0 w-full h-[3px] bg-blue-400 shadow-[0_0_15px_#3b82f6] animate-scan z-10"></div>
