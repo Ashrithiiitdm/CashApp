@@ -10,24 +10,26 @@ import RecentTransactions from './pages/RecentTransactions.jsx'
 import SearchStores from './pages/SearchStores.jsx'
 import StoreDetails from './pages/StoreDetails.jsx'
 import CheckBalance from './pages/CheckBalance.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 function App() {
   return (
     <div>
       {/* Route Definitions */}
       <Routes>
-        <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/qrscanner" element={<QRScanner />} />
-        <Route path="/paypeople" element={<PayPeoplePage />} />
-        <Route path="/moneytransfer" element={<MoneyTransfer />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/recent-transactions" element={<RecentTransactions />} />
-        <Route path="/search-stores" element={<SearchStores />} />
-        <Route path="/store-details" element={<StoreDetails />} />
-        <Route path="/check-balance" element={<CheckBalance />} />
+
+        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/qrscanner" element={<ProtectedRoute><QRScanner /></ProtectedRoute>} />
+        <Route path="/paypeople" element={<ProtectedRoute><PayPeoplePage /></ProtectedRoute>} />
+        <Route path="/moneytransfer" element={<ProtectedRoute><MoneyTransfer /></ProtectedRoute>} />
+        <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+        <Route path="/recent-transactions" element={<ProtectedRoute><RecentTransactions /></ProtectedRoute>} />
+        <Route path="/search-stores" element={<ProtectedRoute><SearchStores /></ProtectedRoute>} />
+        <Route path="/store-details" element={<ProtectedRoute><StoreDetails /></ProtectedRoute>} />
+        <Route path="/check-balance" element={<ProtectedRoute><CheckBalance /></ProtectedRoute>} />
       </Routes>
     </div>
   )
