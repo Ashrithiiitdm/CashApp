@@ -21,11 +21,35 @@ const Home = () => {
 
   const actions = [
     { label: 'Pay People', icon: <PayPeopleIcon />, onClick: () => navigate('/paypeople') },
-    { label: 'Add money', icon: <AddMoneyIcon />, onClick: () => alert('Add money clicked!') },
+    {
+      label: 'Add money', icon: <AddMoneyIcon />, onClick: () => navigate('/moneytransfer', {
+        state: {
+          contact: {
+            id: user?.id || 'self',
+            name: 'My Wallet',
+            type: 'add-money'
+          },
+          prefilledAmount: "",
+          isPaymentFlow: false
+        }
+      })
+    },
     { label: 'Recent Transactions', icon: <RecentIcon />, onClick: () => navigate('/recent-transactions') },
     { label: 'Check Balance', icon: <CheckBalanceIcon />, onClick: () => navigate('/check-balance') },
     { label: 'Search Stores', icon: <SearchStoresIcon />, onClick: () => navigate('/search-stores') },
-    { label: 'Withdraw Money', icon: <WithdrawIcon />, onClick: () => alert('Withdraw Money clicked!') },
+    {
+      label: 'Withdraw Money', icon: <WithdrawIcon />, onClick: () => navigate('/moneytransfer', {
+        state: {
+          contact: {
+            id: user?.id || 'self',
+            name: 'Bank Transfer',
+            type: 'withdraw'
+          },
+          prefilledAmount: "",
+          isPaymentFlow: false
+        }
+      })
+    },
   ];
 
   const navigate = useNavigate();
@@ -48,7 +72,7 @@ const Home = () => {
   return (
     // Outer Container - Matching Signup Page (#1581BF)
     <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 overflow-y-auto font-sans">
-      
+
       {/* Scanner Animation Style */}
       <style>{`
         @keyframes scan {
@@ -68,17 +92,17 @@ const Home = () => {
          - Added 'overflow-hidden' so inner colors don't break the rounded corners
       */}
       <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
-        
+
         {/* --- Header Section (White) --- */}
         <div className="bg-white pt-10 pb-6 px-8">
           <div className="flex justify-between items-center mb-6">
             {/* Left Logo */}
             <LogoIcon />
-            
+
             {/* Right Balance Pill */}
             <div className="flex items-center bg-[#eef7ee] border border-[#dcf0dc] rounded-full px-4 py-1.5">
-               <span className="text-[#36a736] font-bold mr-2">₹ {Number(wallet).toFixed(2)}</span>
-               <WalletIcon />
+              <span className="text-[#36a736] font-bold mr-2">₹ {Number(wallet).toFixed(2)}</span>
+              <WalletIcon />
             </div>
           </div>
 
@@ -97,35 +121,35 @@ const Home = () => {
 
         {/* --- Scanner Section (Dark Blue) --- */}
         <div className="bg-[#065d94] flex items-center justify-center py-8 relative">
-            {/* White QR Container */}
-            <div onClick={clickScanner} className="w-44 h-44 bg-white rounded-3xl flex items-center justify-center relative p-2 overflow-hidden shadow-lg">
-                
-                <img
-                    src={dummayQR}
-                    alt='QR code scanner'
-                    className='p-2'
-                />
+          {/* White QR Container */}
+          <div onClick={clickScanner} className="w-44 h-44 bg-white rounded-3xl flex items-center justify-center relative p-2 overflow-hidden shadow-lg">
+
+            <img
+              src={dummayQR}
+              alt='QR code scanner'
+              className='p-2'
+            />
 
 
-                {/* Animated Scanner Line */}
-                <div className="absolute left-0 w-full h-[3px] bg-blue-400 shadow-[0_0_15px_#3b82f6] animate-scan z-10"></div>
-            </div>
+            {/* Animated Scanner Line */}
+            <div className="absolute left-0 w-full h-[3px] bg-blue-400 shadow-[0_0_15px_#3b82f6] animate-scan z-10"></div>
+          </div>
         </div>
 
         {/* --- Footer Action Grid (White/Gray) --- */}
         <div className="bg-[#f8f9fd] px-6 py-4">
-            <div className="grid grid-cols-3 gap-y-4 gap-x-4">
-                {actions.map((item, index) => (
-                    <div key={index} onClick={item.onClick} className="flex flex-col items-center text-center cursor-pointer hover:scale-105 transition-transform duration-200">
-                        <div className="mb-1">
-                           {item.icon}
-                        </div>
-                        <span className="text-[#065d94] text-[13px] font-semibold leading-tight max-w-[80px]">
-                            {item.label}
-                        </span>
-                    </div>
-                ))}
-            </div>
+          <div className="grid grid-cols-3 gap-y-4 gap-x-4">
+            {actions.map((item, index) => (
+              <div key={index} onClick={item.onClick} className="flex flex-col items-center text-center cursor-pointer hover:scale-105 transition-transform duration-200">
+                <div className="mb-1">
+                  {item.icon}
+                </div>
+                <span className="text-[#065d94] text-[13px] font-semibold leading-tight max-w-[80px]">
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
