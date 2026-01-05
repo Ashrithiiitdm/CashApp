@@ -184,82 +184,168 @@ export const getRecentTransactions = async (req, res) => {
         const user_id = req.user_id;
         const search = req.query.search?.trim();
 
-        let baseQuery = `
-            (
-                -- Payments: user ↔ user, user → store
-                SELECT
-                    T.transaction_id,
-                    'payment' AS transaction_category,
-                    T.transaction_kind,
-                    T.transaction_status,
-                    T.amount_paise,
-                    T.currency,
-                    T.created_at,
+        // Check if user is a vendor
+        const vendorCheck = await pool.query(
+            `SELECT vendor_id FROM Vendors WHERE owner_user_id = $1`,
+            [user_id]
+        );
 
-                    U2.user_id    AS peer_user_id,
-                    U2.full_name  AS peer_name,
-                    U2.cashapp_id AS peer_cashapp_id,
+        const isVendor = vendorCheck.rowCount > 0;
+        const vendor_id = isVendor ? vendorCheck.rows[0].vendor_id : null;
 
-                    S.store_id,
-                    S.display_name AS store_name,
-
-                    NULL::text AS transaction_type,
-                    NULL::text AS stripe_payment_intent_id
-
-                FROM transactions T
-                LEFT JOIN users U2
-                  ON (
-                       (T.from_user_id = $1 AND U2.user_id = T.to_user_id)
-                    OR (T.to_user_id   = $1 AND U2.user_id = T.from_user_id)
-                  )
-                LEFT JOIN stores S ON S.store_id = T.store_id
-                WHERE (T.from_user_id = $1 OR T.to_user_id = $1)
-                  AND T.transaction_status = 'completed'
-            )
-
-            UNION ALL
-
-            (
-                -- Wallet transactions
-                SELECT
-                    WT.wallet_transaction_id AS transaction_id,
-                    'wallet' AS transaction_category,
-                    CASE 
-                        WHEN WT.transaction_type = 'ADD_MONEY' THEN 'credit'
-                        WHEN WT.transaction_type = 'WITHDRAW'  THEN 'debit'
-                    END AS transaction_kind,
-                    'completed' AS transaction_status,
-                    WT.amount_paise,
-                    WT.currency,
-                    WT.created_at,
-
-                    NULL::text AS peer_user_id,
-                    CASE 
-                        WHEN WT.transaction_type = 'ADD_MONEY' THEN 'Add Money'
-                        WHEN WT.transaction_type = 'WITHDRAW'  THEN 'Withdraw'
-                    END AS peer_name,
-                    NULL::text AS peer_cashapp_id,
-                    NULL::text AS store_id,
-                    NULL::text AS store_name,
-
-                    WT.transaction_type,
-                    WT.stripe_payment_intent_id
-
-                FROM wallet_transactions WT
-                WHERE WT.user_id = $1
-                  AND WT.status = 'SUCCESS'
-            )
-        `;
-
+        let baseQuery;
         const params = [user_id];
 
+        if (isVendor) {
+            // For vendors: show transactions to their stores AND direct payments to vendor
+            baseQuery = `
+                (
+                    -- Store payments: users → vendor's stores
+                    SELECT
+                        T.transaction_id,
+                        'payment' AS transaction_category,
+                        
+                        -- For vendor, invert the transaction kind (they receive when user pays)
+                        CASE
+                            WHEN T.transaction_kind = 'debit' THEN 'credit'
+                            WHEN T.transaction_kind = 'credit' THEN 'debit'
+                        END AS transaction_kind,
+                        
+                        T.transaction_status,
+                        T.amount_paise,
+                        T.currency,
+                        T.created_at,
+
+                        U.user_id    AS peer_user_id,
+                        U.full_name  AS peer_name,
+                        U.cashapp_id AS peer_cashapp_id,
+
+                        S.store_id,
+                        S.display_name AS store_name,
+
+                        NULL::text AS transaction_type,
+                        NULL::text AS stripe_payment_intent_id
+
+                    FROM transactions T
+                    JOIN stores S ON S.store_id = T.store_id
+                    JOIN users U ON U.user_id = T.from_user_id
+                    WHERE S.vendor_id = $2
+                      AND T.transaction_status = 'completed'
+                )
+                
+                UNION ALL
+                
+                (
+                    -- Direct payments: users → vendor (QR code scan)
+                    SELECT
+                        T.transaction_id,
+                        'payment' AS transaction_category,
+                        T.transaction_kind,
+                        T.transaction_status,
+                        T.amount_paise,
+                        T.currency,
+                        T.created_at,
+
+                        U2.user_id    AS peer_user_id,
+                        U2.full_name  AS peer_name,
+                        U2.cashapp_id AS peer_cashapp_id,
+
+                        NULL::text AS store_id,
+                        NULL::text AS store_name,
+
+                        NULL::text AS transaction_type,
+                        NULL::text AS stripe_payment_intent_id
+
+                    FROM transactions T
+                    LEFT JOIN users U2
+                      ON (
+                           (T.from_user_id = $1 AND U2.user_id = T.to_user_id)
+                        OR (T.to_user_id   = $1 AND U2.user_id = T.from_user_id)
+                      )
+                    WHERE (T.from_user_id = $1 OR T.to_user_id = $1)
+                      AND T.store_id IS NULL
+                      AND T.transaction_status = 'completed'
+                )
+            `;
+            params.push(vendor_id);
+        } else {
+            // For regular users: show user-to-user and user-to-store transactions
+            baseQuery = `
+                (
+                    -- Payments: user ↔ user, user → store
+                    SELECT
+                        T.transaction_id,
+                        'payment' AS transaction_category,
+                        T.transaction_kind,
+                        T.transaction_status,
+                        T.amount_paise,
+                        T.currency,
+                        T.created_at,
+
+                        U2.user_id    AS peer_user_id,
+                        U2.full_name  AS peer_name,
+                        U2.cashapp_id AS peer_cashapp_id,
+
+                        S.store_id,
+                        S.display_name AS store_name,
+
+                        NULL::text AS transaction_type,
+                        NULL::text AS stripe_payment_intent_id
+
+                    FROM transactions T
+                    LEFT JOIN users U2
+                      ON (
+                           (T.from_user_id = $1 AND U2.user_id = T.to_user_id)
+                        OR (T.to_user_id   = $1 AND U2.user_id = T.from_user_id)
+                      )
+                    LEFT JOIN stores S ON S.store_id = T.store_id
+                    WHERE (T.from_user_id = $1 OR T.to_user_id = $1)
+                      AND T.transaction_status = 'completed'
+                )
+
+                UNION ALL
+
+                (
+                    -- Wallet transactions
+                    SELECT
+                        WT.wallet_transaction_id AS transaction_id,
+                        'wallet' AS transaction_category,
+                        CASE 
+                            WHEN WT.transaction_type = 'ADD_MONEY' THEN 'credit'
+                            WHEN WT.transaction_type = 'WITHDRAW'  THEN 'debit'
+                        END AS transaction_kind,
+                        'completed' AS transaction_status,
+                        WT.amount_paise,
+                        WT.currency,
+                        WT.created_at,
+
+                        NULL::text AS peer_user_id,
+                        CASE 
+                            WHEN WT.transaction_type = 'ADD_MONEY' THEN 'Add Money'
+                            WHEN WT.transaction_type = 'WITHDRAW'  THEN 'Withdraw'
+                        END AS peer_name,
+                        NULL::text AS peer_cashapp_id,
+                        NULL::text AS store_id,
+                        NULL::text AS store_name,
+
+                        WT.transaction_type,
+                        WT.stripe_payment_intent_id
+
+                    FROM wallet_transactions WT
+                    WHERE WT.user_id = $1
+                      AND WT.status = 'SUCCESS'
+                )
+            `;
+        }
+
         if (search) {
+            const searchParamIndex = params.length + 1;
             baseQuery = `
                 SELECT * FROM (${baseQuery}) all_tx
                 WHERE (
-                    peer_name ILIKE $2
-                 OR peer_cashapp_id ILIKE $2
-                 OR store_name ILIKE $2
+                    peer_name ILIKE $${searchParamIndex}
+                 OR peer_cashapp_id ILIKE $${searchParamIndex}
+                 OR store_name ILIKE $${searchParamIndex}
                 )
             `;
             params.push(`%${search}%`);
