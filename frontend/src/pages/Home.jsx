@@ -23,6 +23,8 @@ const Home = () => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
+  console.log("User Data in Home:", user);
+
   const handleLogout = () => {
     // Clear state and redirect
     if (logout) logout();

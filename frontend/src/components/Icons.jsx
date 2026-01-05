@@ -17,6 +17,8 @@ import filterImage from '../assets/icons/filter.png';
 import dropdownImage from '../assets/icons/dropdown.png';
 import ReceiptImage from '../assets/icons/receipt.png';
 import GroceryStoreImage from '../assets/icons/grocery-store.png';
+import addImage from '../assets/icons/add.png';
+import trashImage from '../assets/icons/trash.png';
 
 const ActionIconWrapper = ({ children }) => (
   <div className="w-12 h-12 bg-[#1c86c8] rounded-full flex items-center justify-center shadow-md">
@@ -145,6 +147,22 @@ export const DropdownIcon = () => (
   <img 
     src={dropdownImage}
     alt="Dropdown Icon"
+    className='w-5 h-5'
+  />
+);
+
+export const AddIcon = () => (
+  <img 
+    src={addImage}
+    alt="Add Icon"
+    className='w-5 h-5'
+  />
+);
+
+export const TrashIcon = () => (
+  <img 
+    src={trashImage}
+    alt="Trash Icon"
     className='w-5 h-5'
   />
 );

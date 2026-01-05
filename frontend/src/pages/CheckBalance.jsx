@@ -1,3 +1,4 @@
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCodeFromLib from 'react-qr-code';
 import { useAuthStore } from '../store/useAuthStore';
@@ -9,6 +10,9 @@ import {
 const CheckBalance = () => {
     const navigate = useNavigate();
     const { user, wallet } = useAuthStore();
+
+    // Check if user is a vendor
+    const isVendor = user?.role === 'vendor';
 
     // FIX: Handle bundler import mismatch safely
     const QRCode = QRCodeFromLib.default || QRCodeFromLib;
@@ -59,47 +63,50 @@ const CheckBalance = () => {
                         </span>
                     </div>
 
-                    {/* --- NEW: Two Separate Buttons --- */}
+                    {/* --- Action Buttons --- */}
                     <div className="flex w-full max-w-[300px] gap-3 mb-6">
 
-                        {/* 1. Add Money Button */}
-                        <button
-                            onClick={() => navigate('/moneytransfer', {
-                                state: {
-                                    contact: {
-                                        id: user?.id || 'self',
-                                        name: 'My Wallet',
-                                        type: 'add-money'
-                                    },
-                                    prefilledAmount: "",
-                                    isPaymentFlow: false
-                                }
-                            })}
-                            className="flex-1 flex flex-col items-center justify-center py-4 rounded-2xl border border-blue-100 bg-blue-50 text-blue-600 shadow-sm hover:bg-blue-100 active:scale-95 transition-all"
-                        >
-                            <div className="mb-1">
-                                {/* Plus Icon */}
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M12 5v14m-7-7h14" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </div>
-                            <span className="font-bold text-sm">Add Money</span>
-                        </button>
+                        {/* 1. Add Money Button (HIDDEN FOR VENDORS) */}
+                        {!isVendor && (
+                            <button
+                                onClick={() => navigate('/moneytransfer', {
+                                    state: {
+                                        contact: {
+                                            id: user?.id || 'self',
+                                            name: 'My Wallet',
+                                            type: 'add-money'
+                                        },
+                                        prefilledAmount: "",
+                                        isPaymentFlow: false
+                                    }
+                                })}
+                                className="flex-1 flex flex-col items-center justify-center py-4 rounded-2xl border border-blue-100 bg-blue-50 text-blue-600 shadow-sm hover:bg-blue-100 active:scale-95 transition-all"
+                            >
+                                <div className="mb-1">
+                                    {/* Plus Icon */}
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M12 5v14m-7-7h14" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                </div>
+                                <span className="font-bold text-sm">Add Money</span>
+                            </button>
+                        )}
 
-                        {/* 2. Withdraw Button */}
+                        {/* 2. Withdraw Button (Visible to everyone) */}
                         <button
                             onClick={() => navigate('/moneytransfer', {
                                 state: {
                                     contact: {
                                         id: user?.id || 'self',
                                         name: 'Bank Transfer',
-                                        type: 'withdraw' 
+                                        type: 'withdraw'
                                     },
                                     prefilledAmount: "",
                                     isPaymentFlow: false
                                 }
                             })}
-                            className="flex-1 flex flex-col items-center justify-center py-4 rounded-2xl border border-gray-100 bg-white text-gray-600 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+                            // If user is vendor (add money is hidden), make withdraw button full width
+                            className={`${isVendor ? 'w-full' : 'flex-1'} flex flex-col items-center justify-center py-4 rounded-2xl border border-gray-100 bg-white text-gray-600 shadow-sm hover:bg-gray-50 active:scale-95 transition-all`}
                         >
                             <div className="mb-1">
                                 {/* Arrow Up/Right Icon */}
