@@ -1,17 +1,21 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowBackIcon, ImageIcon } from '../../components/Icons';
-import { STORE_ICONS_MAP, StoreIconDisplay } from '../../components/StoreIcons';
+import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowBackIcon, ImageIcon } from "../../components/Icons";
+import { STORE_ICONS_MAP, StoreIconDisplay } from "../../components/StoreIcons";
+import axios from "../../config/axiosConfig";
+import { useAuthStore } from "../../store/useAuthStore";
 
 const AddStore = () => {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
 
+    const { token } = useAuthStore();
+
     const [storeData, setStoreData] = useState({
-        name: '',
-        address: '',
+        name: "",
+        address: "",
         // Default to the first key in the map
-        iconId: 'store_1',
+        iconId: "store_1",
         imageFile: null,
     });
 
@@ -33,48 +37,86 @@ const AddStore = () => {
 
         setIsLoading(true);
 
-        let extractedItems = [];
-
-        // --- SIMULATION OF IMAGE EXTRACTION ---
-        if (storeData.imageFile) {
-            // In a real app, you would send the image to your backend here.
-            console.log("Uploading image and extracting items...");
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
-
-            // Mock extracted data
-            extractedItems = [
-                { id: 1, name: "Classmate Notebook", price: 75, category: "Stationery", quantity: 10 },
-                { id: 2, name: "Ball Pen Blue", price: 10, category: "Stationery", quantity: 50 },
-                { id: 3, name: "A4 Paper Ream", price: 220, category: "Office", quantity: 5 },
-            ];
-        }
-
-        console.log("Saving to DB:", storeData.iconId);
-        // ------------------------------------
-
-        setIsLoading(false);
-
-        // Navigate to the Edit Items page, passing store details and initial items
-        navigate('/vendor/edit-items', {
-            state: {
-                storeDetails: {
+        try {
+            // Call the backend API to create the store
+            const response = await axios.post(
+                "/api/stores",
+                {
                     name: storeData.name,
-                    address: storeData.address,
-                    logoId: storeData.logoIndex
+                    location: storeData.address,
+                    store_logo: storeData.iconId, // Send the icon ID (e.g., "store_1")
                 },
-                initialItems: extractedItems
-            }
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
-        });
+            if (response.data.success) {
+                let extractedItems = [];
+
+                // --- SIMULATION OF IMAGE EXTRACTION ---
+                if (storeData.imageFile) {
+                    // In a real app, you would send the image to your backend here.
+                    console.log("Uploading image and extracting items...");
+                    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate delay
+
+                    // Mock extracted data
+                    extractedItems = [
+                        {
+                            id: 1,
+                            name: "Classmate Notebook",
+                            price: 75,
+                            category: "Stationery",
+                            quantity: 10,
+                        },
+                        {
+                            id: 2,
+                            name: "Ball Pen Blue",
+                            price: 10,
+                            category: "Stationery",
+                            quantity: 50,
+                        },
+                        {
+                            id: 3,
+                            name: "A4 Paper Ream",
+                            price: 220,
+                            category: "Office",
+                            quantity: 5,
+                        },
+                    ];
+                }
+                // ------------------------------------
+
+                // Navigate to the Edit Items page, passing store details and initial items
+                navigate("/vendor/edit-items", {
+                    state: {
+                        storeDetails: {
+                            name: storeData.name,
+                            address: storeData.address,
+                            logoId: storeData.iconId,
+                        },
+                        initialItems: extractedItems,
+                    },
+                });
+            }
+        } catch (error) {
+            console.error("Error creating store:", error);
+            alert(
+                error.response?.data?.message ||
+                    "Failed to create store. Please try again."
+            );
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
         <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 font-sans">
             <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
-
                 {/* Header */}
                 <div className="bg-white pt-8 pb-6 px-6 flex items-center relative shadow-sm z-10">
-                    <button onClick={() => navigate(-1)} className="absolute left-6 p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="absolute left-6 p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+                    >
                         <ArrowBackIcon className="text-gray-700 w-6 h-6" />
                     </button>
                     <h2 className="text-xl font-bold text-gray-900 w-full text-center">
@@ -84,14 +126,20 @@ const AddStore = () => {
 
                 {/* Content Section */}
                 <div className="flex-1 flex flex-col px-6 py-8 overflow-y-auto bg-[#f8f9fd]">
-
                     {/* Store Name Input */}
                     <div className="mb-6">
-                        <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Store Name</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">
+                            Store Name
+                        </label>
                         <input
                             type="text"
                             value={storeData.name}
-                            onChange={(e) => setStoreData({ ...storeData, name: e.target.value })}
+                            onChange={(e) =>
+                                setStoreData({
+                                    ...storeData,
+                                    name: e.target.value,
+                                })
+                            }
                             className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-blue-400 focus:ring-0 text-gray-800 outline-none transition-all shadow-sm font-medium"
                             placeholder="Enter store name"
                         />
@@ -99,17 +147,27 @@ const AddStore = () => {
 
                     {/* Choose Logo Selector */}
                     <div className="mb-6">
-                        <label className="block text-sm font-bold text-gray-700 mb-3 ml-1">Choose a logo</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-3 ml-1">
+                            Choose a logo
+                        </label>
                         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-1">
                             {availableIcons.map((key) => (
                                 <div
                                     key={key}
-                                    onClick={() => setStoreData({ ...storeData, iconId: key })}
+                                    onClick={() =>
+                                        setStoreData({
+                                            ...storeData,
+                                            iconId: key,
+                                        })
+                                    }
                                     className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer border-4 transition-all 
-                    ${storeData.iconId === key ? 'border-blue-400 bg-blue-50 scale-110' : 'border-transparent bg-white shadow-md'}`}
+                    ${storeData.iconId === key ? "border-blue-400 bg-blue-50 scale-110" : "border-transparent bg-white shadow-md"}`}
                                 >
                                     {/* Use the helper to render */}
-                                    <StoreIconDisplay iconId={key} className="w-8 h-8 object-contain" />
+                                    <StoreIconDisplay
+                                        iconId={key}
+                                        className="w-8 h-8 object-contain"
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -117,11 +175,18 @@ const AddStore = () => {
 
                     {/* Address Input */}
                     <div className="mb-8">
-                        <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">Address / Location</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">
+                            Address / Location
+                        </label>
                         <textarea
                             rows={4}
                             value={storeData.address}
-                            onChange={(e) => setStoreData({ ...storeData, address: e.target.value })}
+                            onChange={(e) =>
+                                setStoreData({
+                                    ...storeData,
+                                    address: e.target.value,
+                                })
+                            }
                             className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-blue-400 focus:ring-0 text-gray-800 outline-none transition-all shadow-sm font-medium resize-none"
                             placeholder="Enter complete store address"
                         />
@@ -144,10 +209,11 @@ const AddStore = () => {
                             {storeData.imageFile ? "Change File" : "Browse"}
                         </button>
                         <p className="text-sm text-gray-500 max-w-[200px] leading-tight">
-                            {storeData.imageFile ? storeData.imageFile.name : "Take or upload image to build item list automatically"}
+                            {storeData.imageFile
+                                ? storeData.imageFile.name
+                                : "Take or upload image to build item list automatically"}
                         </p>
                     </div>
-
                 </div>
 
                 {/* Bottom Button */}
@@ -157,10 +223,11 @@ const AddStore = () => {
                         disabled={isLoading}
                         className="w-full bg-[#22c55e] hover:bg-[#1fa850] text-white text-lg font-bold py-4 rounded-full shadow-lg active:scale-[0.98] transition-all disabled:opacity-70"
                     >
-                        {isLoading ? "Processing..." : "Create Store & Continue"}
+                        {isLoading
+                            ? "Processing..."
+                            : "Create Store & Continue"}
                     </button>
                 </div>
-
             </div>
         </div>
     );

@@ -26,7 +26,7 @@ const MyStores = () => {
         setIsLoading(true);
         // API Call to get stores owned by this vendor
         // Adjust endpoint based on your actual backend route
-        const response = await axios.get(`/api/stores/vendor/${user.user_id}`, {
+        const response = await axios.get(`/api/stores`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         

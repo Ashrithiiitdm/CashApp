@@ -73,16 +73,41 @@ export const getStoreRecentTransactions = async (req, res) => {
 
 export const addStore = async (req, res) => {
     try {
-        const { name, location, description } = req.body;
+        const { name, location, store_logo } = req.body;
 
-        const vendor_id = req.user_id;
+        const owner_user_id = req.user_id;
+
+        const vendorResult = await pool.query(
+            `
+                SELECT vendor_id
+                FROM Vendors
+                WHERE owner_user_id = $1 
+            `,
+            [owner_user_id]
+        );
+
+        if (vendorResult.rowCount === 0) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not registered as a vendor",
+            });
+        }
+
+        const vendor_id = vendorResult.rows[0].vendor_id;
+
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: "Store name is required",
+            });
+        }
 
         await pool.query(
             `
-                INSERT INTO Stores (vendor_id, display_name, status, location_text, description)
+                INSERT INTO Stores (vendor_id, display_name, status, location_text, store_logo)
                 VALUES ($1, $2, 'active', $3, $4)
             `,
-            [vendor_id, name, location, description]
+            [vendor_id, name, location, store_logo]
         );
 
         return res.status(201).json({
@@ -102,17 +127,52 @@ export const addStore = async (req, res) => {
 
 export const getStores = async (req, res) => {
     try {
-        // Get name, location, status
+        const owner_user_id = req.user_id;
+
+        // Get vendor_id for this user
+        const vendorResult = await pool.query(
+            `
+                SELECT vendor_id
+                FROM Vendors
+                WHERE owner_user_id = $1 
+            `,
+            [owner_user_id]
+        );
+
+        if (vendorResult.rowCount === 0) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not registered as a vendor",
+            });
+        }
+
+        const vendor_id = vendorResult.rows[0].vendor_id;
+
+        // Get stores owned by this vendor
         const result = await pool.query(
             `
-                SELECT store_id, display_name, location_text, status, description
+                SELECT store_id, display_name, location_text, status, description, store_logo, created_at
                 FROM Stores
-            `
+                WHERE vendor_id = $1
+                ORDER BY created_at DESC
+            `,
+            [vendor_id]
         );
+
+        // Map database columns to frontend-expected property names
+        const stores = result.rows.map((store) => ({
+            id: store.store_id,
+            name: store.display_name,
+            address: store.location_text,
+            icon_id: store.store_logo,
+            status: store.status,
+            description: store.description,
+            created_at: store.created_at,
+        }));
 
         return res.status(200).json({
             success: true,
-            stores: result.rowCount > 0 ? result.rows : [],
+            stores: stores.length > 0 ? stores : [],
         });
     } catch (err) {
         console.error("Error fetching stores:", err);

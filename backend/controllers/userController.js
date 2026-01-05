@@ -92,9 +92,10 @@ export const loginUser = async (req, res) => {
         // 3. If user doesn't exist, create them (for Google/social logins)
         if (userResult.rows.length === 0) {
             if (!role) {
+                // If role is not there, it means that he should signup first,
                 return res.status(400).json({
                     success: false,
-                    message: "Role is required for new users",
+                    message: "Please sign up first by providing a role",
                 });
             }
 
