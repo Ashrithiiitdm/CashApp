@@ -62,6 +62,10 @@ const VendorDashboard = () => {
     },
   ];
 
+  const goToMyStores = (focusSearch = false) => {
+    navigate('/vendor/my-stores', { state: { focusSearch } });
+  };
+
   return (
     // Outer Container - Matching Home.js (#1581BF)
     <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 overflow-y-auto font-sans">
@@ -100,11 +104,15 @@ const VendorDashboard = () => {
           </div>
 
           {/* Search Bar */}
-          <div className="relative w-full">
+          <div 
+             onClick={() => goToMyStores(true)} 
+             className="relative w-full cursor-pointer"
+          >
             <input
               type="text"
               placeholder="Search My stores"
-              className="w-full py-3.5 pl-12 pr-4 rounded-full bg-white border border-gray-200 shadow-sm outline-none text-gray-700 text-md placeholder-gray-400 focus:border-blue-400 transition-all"
+              readOnly // Prevents typing here, forces redirect
+              className="w-full py-3.5 pl-12 pr-4 rounded-full bg-white border border-gray-200 shadow-sm outline-none text-gray-700 text-md placeholder-gray-400 focus:border-blue-400 transition-all cursor-pointer"
             />
             <div className="absolute left-4 top-1/2 -translate-y-1/2">
               <SearchIcon />
@@ -113,8 +121,7 @@ const VendorDashboard = () => {
         </div>
 
         {/* --- HERO SECTION (Dark Blue) --- */}
-        {/* Replaces the Scanner Section from Home.js */}
-        <div className="bg-[#065d94] flex flex-col items-center justify-center py-8 relative text-white">
+        <div onClick={() => navigate('/vendor/my-stores')} className="bg-[#065d94] flex flex-col items-center justify-center py-8 relative text-white">
             {/* Big Store Icon */}
             <div className="mb-4">
                <svg width="100" height="100" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="0">

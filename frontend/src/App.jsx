@@ -17,6 +17,7 @@ import CheckBalance from './pages/CheckBalance.jsx';
 import VendorDashboard from './pages/vendor/VendorDashboard.jsx';
 import AddStore from './pages/vendor/AddStore.jsx';
 import EditStoreItems from './pages/vendor/EditStoreItems.jsx';
+import MyStores from './pages/vendor/MyStores.jsx';
 
 // --- Components ---
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -99,7 +100,12 @@ function App() {
             </ProtectedRoute>
         } />
 
-        {/* UPDATE THESE ROUTES */}
+        <Route path="/vendor/my-stores" element={
+            <ProtectedRoute allowedRoles={['vendor']}>
+                <MyStores />
+            </ProtectedRoute>
+        } />
+
         <Route path="/vendor/add-store" element={
             <ProtectedRoute allowedRoles={['vendor']}>
                 <AddStore />
