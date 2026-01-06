@@ -19,6 +19,7 @@ import ReceiptImage from '../assets/icons/receipt.png';
 import GroceryStoreImage from '../assets/icons/grocery-store.png';
 import addImage from '../assets/icons/add.png';
 import trashImage from '../assets/icons/trash.png';
+import editImage from '../assets/icons/edit.png';
 
 const ActionIconWrapper = ({ children }) => (
   <div className="w-12 h-12 bg-[#1c86c8] rounded-full flex items-center justify-center shadow-md">
@@ -164,6 +165,14 @@ export const TrashIcon = () => (
     src={trashImage}
     alt="Trash Icon"
     className='w-5 h-5'
+  />
+);
+
+export const EditIcon = () => (
+  <img 
+    src={editImage}
+    alt="Edit Icon"
+    className='w-3 h-3'
   />
 );
 

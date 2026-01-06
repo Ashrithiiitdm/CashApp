@@ -1,244 +1,335 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 import {
     ArrowBackIcon,
-    SearchStoresIcon,
-    AddIcon,
+    SearchIcon,
+    AddIcon as PlusIconSmall,
     TrashIcon,
-} from "../../components/Icons";
-import { v4 as uuidv4 } from "uuid";
+    DropdownIcon,
+    EditIcon,
+} from '../../components/Icons';
+import { StoreIconDisplay } from '../../components/StoreIcons';
 
 const EditStoreItems = () => {
     const navigate = useNavigate();
     const location = useLocation();
-
-    // Get data passed from AddStore page
     const { storeDetails, initialItems } = location.state || {};
 
-    const [items, setItems] = useState([]);
+    // Refs
+    const fileInputRef = useRef(null);
 
-    // Initialize items on load
+    // State
+    const [items, setItems] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [openCategories, setOpenCategories] = useState({});
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [tempCategoryName, setTempCategoryName] = useState("");
+
+    // Loading state for the "Scanning" simulation
+    const [isScanning, setIsScanning] = useState(false);
+
+    // Initialize
     useEffect(() => {
         if (initialItems && initialItems.length > 0) {
-            // Ensure each item has a unique ID
-            const itemsWithIds = initialItems.map((item, index) => ({
-                ...item,
-                id: item.id || uuidv4(),
-                name: item.name || "",
-                price: item.price || 0,
-                category: item.category || "",
-                quantity: item.quantity || 1,
-            }));
-            setItems(itemsWithIds);
+            setItems(initialItems);
+            const initialOpen = {};
+            initialItems.forEach(i => initialOpen[i.category] = true);
+            setOpenCategories(initialOpen);
         } else {
-            // Add one empty row if starting fresh
-            addItemRow();
+            const dummy = [
+                { id: 1, name: "Classmate Notebook", price: 75, category: "Stationery", quantity: 50 },
+                { id: 2, name: "Blue Gel Pen", price: 10, category: "Stationery", quantity: 100 },
+            ];
+            setItems(dummy);
+            setOpenCategories({ "Stationery": true });
         }
     }, [initialItems]);
 
-    const addItemRow = () => {
-        setItems([
-            ...items,
-            { id: uuidv4(), name: "", price: "", category: "", quantity: 1 },
-        ]);
-    };
-
-    const removeItemRow = (idToRemove) => {
-        setItems(items.filter((item) => item.id !== idToRemove));
-    };
+    // --- ACTIONS ---
 
     const handleItemChange = (id, field, value) => {
-        const updatedItems = items.map((item) => {
-            if (item.id === id) {
-                return { ...item, [field]: value };
-            }
-            return item;
+        setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
+    const deleteItem = (id) => {
+
+        setItems(items.filter(i => i.id !== id));
+    };
+
+    const addItemToCategory = (categoryName) => {
+        const newItem = { id: uuidv4(), name: "", price: "", quantity: 1, category: categoryName };
+        setItems([...items, newItem]);
+        setOpenCategories(prev => ({ ...prev, [categoryName]: true }));
+    };
+
+    const addNewCategory = () => {
+        let newName = "New Category";
+        let counter = 1;
+        const existingCats = new Set(items.map(i => i.category));
+        while (existingCats.has(newName)) {
+            newName = `New Category ${counter++}`;
+        }
+
+        const newItem = { id: uuidv4(), name: "", price: "", quantity: 1, category: newName };
+        setItems([...items, newItem]);
+        setOpenCategories(prev => ({ ...prev, [newName]: true }));
+        startEditingCategory(newName);
+    };
+
+    const toggleCategory = (cat) => {
+        setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
+    };
+
+    const startEditingCategory = (currentName) => {
+        setEditingCategory(currentName);
+        setTempCategoryName(currentName);
+    };
+
+    const saveCategoryName = (oldName) => {
+        const newName = tempCategoryName.trim();
+        if (!newName) { alert("Category name cannot be empty"); return; }
+        if (newName === oldName) { setEditingCategory(null); return; }
+
+        setItems(prev => prev.map(item => item.category === oldName ? { ...item, category: newName } : item));
+        setOpenCategories(prev => {
+            const newState = { ...prev };
+            newState[newName] = newState[oldName];
+            delete newState[oldName];
+            return newState;
         });
-        setItems(updatedItems);
+        setEditingCategory(null);
+    };
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsScanning(true);
+
+        // Simulate API Processing Time (1.5 seconds)
+        setTimeout(() => {
+            // Mock Extracted Data
+            const extractedItems = [
+                { id: uuidv4(), name: "Scanned Item A", price: 120, quantity: 5, category: "New Scan" },
+                { id: uuidv4(), name: "Scanned Item B", price: 45, quantity: 12, category: "New Scan" },
+                { id: uuidv4(), name: "Classmate Pen", price: 20, quantity: 10, category: "Stationery" }
+            ];
+
+            // Append to existing items
+            setItems(prev => [...prev, ...extractedItems]);
+
+            // Auto-open the categories where items were added
+            setOpenCategories(prev => {
+                const newState = { ...prev };
+                extractedItems.forEach(item => newState[item.category] = true);
+                return newState;
+            });
+
+            setIsScanning(false);
+            alert(`Extracted ${extractedItems.length} items from image!`);
+
+            // Reset input
+            e.target.value = null;
+        }, 1500);
     };
 
     const handleSave = () => {
-        // Filter out empty rows before saving
-        const validItems = items.filter((item) => item.name.trim() !== "");
-
-        console.log("Saving Store Details:", storeDetails);
-        console.log("Saving Items:", validItems);
-
-        alert("Store and Items Saved Successfully! (Check console for data)");
-        // In real app: API call to save everything, then navigate back to dashboard
-        navigate("/vendor-dashboard");
+        for (let item of items) {
+            if (!item.name.trim() || !item.price) {
+                alert(`Please fill in Name and Price for all items in "${item.category}".`);
+                return;
+            }
+        }
+        console.log("Saving:", items);
+        alert("Saved Successfully!");
+        navigate('/vendor-dashboard');
     };
 
-    if (!storeDetails) {
-        navigate("/vendor-dashboard");
-        return null;
-    }
+    // --- Grouping Logic ---
+    const getGroupedItems = () => {
+        const groups = {};
+        const query = searchQuery.toLowerCase();
+
+        items.forEach(item => {
+            if ((item.name || "").toLowerCase().includes(query)) {
+                const cat = item.category || "Uncategorized";
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(item);
+            }
+        });
+        return groups;
+    };
+
+    const groupedItems = getGroupedItems();
+
+    if (!storeDetails) return null;
 
     return (
         <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 font-sans">
             <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
-                {/* Header - Customized with Store Info */}
-                <div className="bg-white pt-8 pb-6 px-6 flex flex-col items-center relative shadow-sm z-10">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="absolute left-6 top-8 p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
-                    >
-                        <ArrowBackIcon className="text-gray-700 w-6 h-6" />
-                    </button>
 
-                    {/* Store Icon & Name */}
-                    <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center border-2 border-blue-100 mb-2">
-                            <SearchStoresIcon className="w-8 h-8 text-[#065d94]" />
+                {/* --- Header --- */}
+                <div className="bg-white pt-8 pb-4 px-6 shadow-sm z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                        <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
+                            <ArrowBackIcon className="text-gray-700 w-6 h-6" />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 p-1 overflow-hidden">
+                                <StoreIconDisplay iconId={storeDetails.logoId} className="w-full h-full object-contain" />
+                            </div>
+                            <h2 className="text-lg font-bold text-gray-900 truncate max-w-[200px]">{storeDetails.name}</h2>
                         </div>
-                        <h2 className="text-xl font-bold text-gray-900">
-                            {storeDetails.name}
-                        </h2>
-                        <p className="text-xs text-gray-500 text-center max-w-[250px] mt-1 leading-tight">
-                            {storeDetails.address}
-                        </p>
                     </div>
-                </div>
 
-                {/* Content Section - Item List */}
-                <div className="flex-1 flex flex-col px-5 py-6 overflow-y-auto bg-[#f8f9fd]">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-[#065d94]">
-                            Add / Edit Items
-                        </h3>
-                        {/* Add Item Button (Small) */}
+                    {/* Search Bar */}
+                    <div className="relative w-full mb-6">
+                        <input
+                            type="text"
+                            placeholder="Search items..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value, token)}
+                            className="w-full py-3.5 pl-12 pr-4 rounded-full bg-white border border-gray-200 shadow-sm outline-none text-gray-700 text-md placeholder-gray-400 focus:border-blue-400 transition-all"
+                        />
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                            <SearchIcon />
+                        </div>
+                    </div>
+
+                    <div className="w-full">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                        />
                         <button
-                            onClick={addItemRow}
-                            className="flex items-center gap-1 bg-blue-100 hover:bg-blue-200 text-[#065d94] px-3 py-1.5 rounded-full font-bold text-sm transition-colors"
+                            onClick={() => fileInputRef.current.click()}
+                            disabled={isScanning}
+                            className="w-full py-2.5 rounded-xl bg-gray-100 border border-dashed border-gray-300 text-gray-600 font-bold text-xs hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
                         >
-                            <AddIcon className="w-4 h-4" />
-                            Add Item
+                            {isScanning ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                                    <span>Extracting items...</span>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Simple Upload Icon SVG if you don't have one imported */}
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span>Browse Image to Auto-Add Items</span>
+                                </>
+                            )}
                         </button>
                     </div>
+                </div>
 
-                    <div className="space-y-4">
-                        {items.map((item, index) => (
-                            <div
-                                key={item.id}
-                                className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 relative animate-in fade-in slide-in-from-bottom-4"
-                            >
-                                {/* Remove Button (Top Right) */}
-                                {items.length > 1 && (
-                                    <button
-                                        onClick={() => removeItemRow(item.id)}
-                                        className="absolute top-4 right-4 p-1.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"
-                                    >
-                                        <TrashIcon className="w-4 h-4" />
-                                    </button>
-                                )}
+                {/* --- Content Area --- */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#f8f9fd]">
 
-                                <div className="grid grid-cols-3 gap-3 mb-3 pr-8">
-                                    {/* Name */}
-                                    <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">
-                                            Item Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={item.name}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    item.id,
-                                                    "name",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-400 focus:bg-white text-gray-800 outline-none text-sm font-medium transition-all"
-                                            placeholder="e.g. Notebook"
-                                        />
-                                    </div>
-                                    {/* Price */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">
-                                            Price (₹)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={item.price}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    item.id,
-                                                    "price",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-400 focus:bg-white text-gray-800 outline-none text-sm font-bold text-center transition-all"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-3">
-                                    {/* Categories */}
-                                    <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">
-                                            Category / Tags
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={item.category}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    item.id,
-                                                    "category",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-400 focus:bg-white text-gray-600 outline-none text-xs transition-all"
-                                            placeholder="e.g. Stationery, Office"
-                                        />
-                                    </div>
-                                    {/* Quantity - NEW FIELD */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1 ml-1">
-                                            Qty.
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={item.quantity}
-                                            onChange={(e) =>
-                                                handleItemChange(
-                                                    item.id,
-                                                    "quantity",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-400 focus:bg-white text-gray-800 outline-none text-sm font-bold text-center transition-all"
-                                            placeholder="1"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="flex px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        <div className="flex-1">Item Name</div>
+                        <div className="w-16 text-center">Price</div>
+                        <div className="w-14 text-center">Qty</div>
+                        <div className="w-6"></div>
                     </div>
 
-                    {/* Add Item Button (Big Bottom) */}
-                    <button
-                        onClick={addItemRow}
-                        className="w-full flex items-center justify-center gap-2 mt-6 bg-white border-2 border-dashed border-blue-200 hover:border-blue-400 text-blue-500 px-6 py-4 rounded-2xl font-bold transition-all"
-                    >
-                        <AddIcon className="w-5 h-5" />
-                        Add Another Item
+                    {/* List Rendering (Same as before) */}
+                    {Object.keys(groupedItems).sort().map(category => (
+                        <div key={category} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
+                                <div className="flex-1 flex items-center gap-2" onClick={(e) => {
+                                    if (editingCategory !== category) toggleCategory(category);
+                                }}>
+                                    {editingCategory === category ? (
+                                        <input
+                                            type="text" autoFocus value={tempCategoryName}
+                                            onChange={(e) => setTempCategoryName(e.target.value)}
+                                            onBlur={() => saveCategoryName(category)}
+                                            onKeyDown={(e) => e.key === 'Enter' && saveCategoryName(category)}
+                                            className="font-bold text-sm text-gray-800 bg-white border-b-2 border-blue-500 outline-none px-1 py-0.5 w-full"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <>
+                                            <span className="font-bold text-sm text-gray-800 select-none">
+                                                {category}
+                                                <span className="text-gray-400 font-normal ml-2 text-xs">({groupedItems[category].length})</span>
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    startEditingCategory(category);
+                                                }}
+                                                className="p-1 text-gray-400 hover:text-blue-500 rounded-full hover:bg-blue-50 transition-all"
+                                            >
+                                                <EditIcon className="w-3.5 h-3.5" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                                <div onClick={() => toggleCategory(category)} className={`cursor-pointer p-1 transform transition-transform duration-200 ${openCategories[category] ? 'rotate-180' : ''}`}>
+                                    <DropdownIcon className="text-gray-400 w-5 h-5" />
+                                </div>
+                            </div>
+
+                            {openCategories[category] && (
+                                <div className="border-t border-gray-100 bg-gray-50 p-2 space-y-2">
+                                    {groupedItems[category].map(item => (
+                                        <ItemRow key={item.id} item={item} onChange={handleItemChange} onDelete={deleteItem} />
+                                    ))}
+                                    <button onClick={() => addItemToCategory(category)} className="w-full py-2.5 mt-2 rounded-xl border border-dashed border-blue-200 text-blue-500 font-bold text-xs hover:bg-blue-50 transition-colors flex items-center justify-center gap-1.5">
+                                        <PlusIconSmall className="w-4 h-4" /> Add item to {category}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+
+                    <button onClick={addNewCategory} className="w-full py-4 mt-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-sm shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2">
+                        <div className="w-6 h-6 text-white rounded-full flex items-center justify-center">
+                            <PlusIconSmall className="w-4 h-4" />
+                        </div>
+                        Create New Category
                     </button>
                 </div>
 
-                {/* Bottom Save Button */}
-                <div className="p-6 bg-white pb-8 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-20">
-                    <button
-                        onClick={handleSave}
-                        className="w-full bg-[#22c55e] hover:bg-[#1fa850] text-white text-lg font-bold py-4 rounded-full shadow-lg active:scale-[0.98] transition-all"
-                    >
-                        Save Store & Items
+                <div className="p-4 bg-white border-t border-gray-100 z-20">
+                    <button onClick={handleSave} className="w-full bg-[#22c55e] hover:bg-[#1fa850] text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-95 transition-all">
+                        Save Changes
                     </button>
                 </div>
+
             </div>
         </div>
     );
 };
+
+// ItemRow component remains exactly the same as previous response
+const ItemRow = ({ item, onChange, onDelete }) => (
+    <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex-1 min-w-0">
+            <input type="text" value={item.name} onChange={(e) => onChange(item.id, 'name', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-none focus:ring-0 p-0 placeholder-gray-300" placeholder="Item Name" autoFocus={!item.name} />
+        </div>
+        <div className="w-16 bg-gray-50 rounded-lg px-2 py-1.5 border border-gray-200 focus-within:border-blue-400 focus-within:bg-white transition-colors">
+            <div className="flex items-center">
+                <span className="text-[10px] text-gray-400 mr-0.5">₹</span>
+                <input type="number" value={item.price} onChange={(e) => onChange(item.id, 'price', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-none focus:ring-0 p-0 text-center" placeholder="0" />
+            </div>
+        </div>
+        <div className="w-14 bg-gray-50 rounded-lg px-1 py-1.5 border border-gray-200 focus-within:border-blue-400 focus-within:bg-white transition-colors">
+            <input type="number" value={item.quantity} onChange={(e) => onChange(item.id, 'quantity', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-none focus:ring-0 p-0 text-center" placeholder="1" />
+        </div>
+        <button onClick={() => onDelete(item.id)} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors">
+            <TrashIcon className="w-4 h-4" />
+        </button>
+    </div>
+);
 
 export default EditStoreItems;
