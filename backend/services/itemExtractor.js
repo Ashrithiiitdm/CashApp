@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 
 // ---------------- CONFIGURATION ----------------
-const GOOGLE_API_KEY = "AIzaSyDxBxVnlPm8FgV1Gt4jiQ60gk4vnDqaOfM";
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 
 // ---------------- PROMPT ----------------
