@@ -22,10 +22,20 @@ const AddStore = () => {
     const availableIcons = Object.keys(STORE_ICONS_MAP);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isExtracting, setIsExtracting] = useState(false);
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
-            setStoreData({ ...storeData, imageFile: e.target.files[0] });
+            const file = e.target.files[0];
+            const fileSizeInMB = file.size / (1024 * 1024);
+            
+            if (fileSizeInMB > 1) {
+                alert(`File size is ${fileSizeInMB.toFixed(2)} MB. Please upload a file smaller than 1 MB.`);
+                e.target.value = ''; // Reset file input
+                return;
+            }
+            
+            setStoreData({ ...storeData, imageFile: file });
         }
     };
 
@@ -52,36 +62,48 @@ const AddStore = () => {
             if (response.data.success) {
                 let extractedItems = [];
 
-                // --- SIMULATION OF IMAGE EXTRACTION ---
+                // --- EXTRACT ITEMS FROM IMAGE/PDF IF PROVIDED ---
                 if (storeData.imageFile) {
-                    // In a real app, you would send the image to your backend here.
-                    console.log("Uploading image and extracting items...");
-                    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate delay
+                    console.log("📤 Uploading file for item extraction...");
+                    setIsExtracting(true);
 
-                    // Mock extracted data
-                    extractedItems = [
-                        {
-                            id: 1,
-                            name: "Classmate Notebook",
-                            price: 75,
-                            category: "Stationery",
-                            quantity: 10,
-                        },
-                        {
-                            id: 2,
-                            name: "Ball Pen Blue",
-                            price: 10,
-                            category: "Stationery",
-                            quantity: 50,
-                        },
-                        {
-                            id: 3,
-                            name: "A4 Paper Ream",
-                            price: 220,
-                            category: "Office",
-                            quantity: 5,
-                        },
-                    ];
+                    try {
+                        const formData = new FormData();
+                        formData.append("file", storeData.imageFile);
+
+                        const extractResponse = await axios.post(
+                            "/api/stores/extract-items",
+                            formData,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                    "Content-Type": "multipart/form-data",
+                                },
+                            }
+                        );
+
+                        if (extractResponse.data.success) {
+                            extractedItems = extractResponse.data.items;
+                            console.log(
+                                `✅ Extracted ${extractedItems.length} items`
+                            );
+                        } else {
+                            console.error(
+                                "⚠️  Extraction failed:",
+                                extractResponse.data.message
+                            );
+                            alert(
+                                "Failed to extract items. You can add them manually."
+                            );
+                        }
+                    } catch (extractError) {
+                        console.error("❌ Error during extraction:", extractError);
+                        alert(
+                            "Error extracting items from file. You can add them manually."
+                        );
+                    } finally {
+                        setIsExtracting(false);
+                    }
                 }
                 // ------------------------------------
 
@@ -198,12 +220,13 @@ const AddStore = () => {
                             type="file"
                             ref={fileInputRef}
                             onChange={handleFileChange}
-                            accept="image/*"
+                            accept="image/*,application/pdf"
                             className="hidden"
                         />
                         <button
                             onClick={() => fileInputRef.current.click()}
                             className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-full font-bold transition-colors mb-3"
+                            disabled={isLoading || isExtracting}
                         >
                             <ImageIcon className="w-5 h-5" />
                             {storeData.imageFile ? "Change File" : "Browse"}
@@ -211,7 +234,7 @@ const AddStore = () => {
                         <p className="text-sm text-gray-500 max-w-[200px] leading-tight">
                             {storeData.imageFile
                                 ? storeData.imageFile.name
-                                : "Take or upload image to build item list automatically"}
+                                : "Upload image or PDF to auto-extract items and prices"}
                         </p>
                     </div>
                 </div>
@@ -220,11 +243,13 @@ const AddStore = () => {
                 <div className="p-6 bg-white pb-8 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-20">
                     <button
                         onClick={handleCreate}
-                        disabled={isLoading}
-                        className="w-full bg-[#22c55e] hover:bg-[#1fa850] text-white text-lg font-bold py-4 rounded-full shadow-lg active:scale-[0.98] transition-all disabled:opacity-70"
+                        disabled={isLoading || isExtracting}
+                        className="w-full bg-[#22c55e] hover:bg-[#1fa850] text-white text-lg font-bold py-4 rounded-full shadow-lg active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                        {isLoading
-                            ? "Processing..."
+                        {isExtracting
+                            ? "Extracting Items..."
+                            : isLoading
+                            ? "Creating Store..."
                             : "Create Store & Continue"}
                     </button>
                 </div>

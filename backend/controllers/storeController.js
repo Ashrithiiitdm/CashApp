@@ -1,4 +1,5 @@
 import pool from "../db.js";
+import { extractItemsFromFile } from "../services/itemExtractor.js";
 
 export const getStoreRecentTransactions = async (req, res) => {
     try {
@@ -368,3 +369,56 @@ export const addItems = async (req, res) => {
         client.release();
     }
 };
+
+export const extractItems = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "No file uploaded",
+            });
+        }
+
+        const fileBuffer = req.file.buffer;
+        const mimeType = req.file.mimetype;
+        const filename = req.file.originalname;
+        const fileSizeInMB = req.file.size / (1024 * 1024);
+
+        console.log("📁 Received file:", filename);
+        console.log("   Size:", (req.file.size / 1024).toFixed(2), "KB");
+        console.log("   Type:", mimeType);
+
+        // Reject files larger than 1 MB due to Vercel compute limitations
+        if (fileSizeInMB > 1) {
+            return res.status(400).json({
+                success: false,
+                message: `File size (${fileSizeInMB.toFixed(2)} MB) exceeds the 1 MB limit. Please upload a smaller file.`,
+            });
+        }
+
+        // Extract items from the file buffer
+        const result = await extractItemsFromFile(fileBuffer, mimeType, filename);
+
+        if (result.success) {
+            return res.json({
+                success: true,
+                items: result.items,
+                message: `Successfully extracted ${result.items.length} items`,
+            });
+        } else {
+            return res.status(500).json({
+                success: false,
+                message: result.error || "Failed to extract items",
+            });
+        }
+    } catch (error) {
+        console.error("❌ Error in extractItems controller:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Error extracting items from file",
+            error: error.message,
+        });
+    }
+};
+
