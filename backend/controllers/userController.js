@@ -222,6 +222,7 @@ export const getRecentTransactions = async (req, res) => {
 
                         S.store_id,
                         S.display_name AS store_name,
+                        S.store_logo,
 
                         NULL::text AS transaction_type,
                         NULL::text AS stripe_payment_intent_id
@@ -252,6 +253,7 @@ export const getRecentTransactions = async (req, res) => {
 
                         NULL::text AS store_id,
                         NULL::text AS store_name,
+                        NULL::text AS store_logo,
 
                         NULL::text AS transaction_type,
                         NULL::text AS stripe_payment_intent_id
@@ -288,6 +290,7 @@ export const getRecentTransactions = async (req, res) => {
 
                         S.store_id,
                         S.display_name AS store_name,
+                        S.store_logo,
 
                         NULL::text AS transaction_type,
                         NULL::text AS stripe_payment_intent_id
@@ -327,6 +330,7 @@ export const getRecentTransactions = async (req, res) => {
                         NULL::text AS peer_cashapp_id,
                         NULL::text AS store_id,
                         NULL::text AS store_name,
+                        NULL::text AS store_logo,
 
                         WT.transaction_type,
                         WT.stripe_payment_intent_id

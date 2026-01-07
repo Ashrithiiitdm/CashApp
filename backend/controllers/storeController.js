@@ -103,17 +103,21 @@ export const addStore = async (req, res) => {
             });
         }
 
-        await pool.query(
+
+        const storeResponse = await pool.query(
             `
                 INSERT INTO Stores (vendor_id, display_name, status, location_text, store_logo)
-                VALUES ($1, $2, 'active', $3, $4)
+                VALUES ($1, $2, 'active', $3, $4) RETURNING store_id
             `,
             [vendor_id, name, location, store_logo]
         );
 
+        const store_id = storeResponse.rows[0].store_id;
+
         return res.status(201).json({
             success: true,
             message: "Store added successfully",
+            store_id: store_id,
         });
     } catch (err) {
         console.error("Error adding store:", err);
@@ -243,7 +247,7 @@ export const getStoreDetails = async (req, res) => {
         // Get items for this store
         const itemsResult = await pool.query(
             `
-                SELECT item_id, item_name, description, quantity, unit, 
+                SELECT item_id, item_name, description, quantity, 
                        price_per_unit_paise, categories, created_at
                 FROM Items
                 WHERE store_id = $1
@@ -273,10 +277,10 @@ export const addItems = async (req, res) => {
     const client = await pool.connect();
 
     try {
-        const user_id = req.user_id;
+        const owner_user_id = req.user_id;
         const { items, store_id } = req.body;
 
-        // Validation for items array
+        // 1. Basic Validation
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -284,81 +288,114 @@ export const addItems = async (req, res) => {
             });
         }
 
-        for (const item of items) {
-            const { name, price, unit, categories } = item;
+        // 2. Get Vendor ID
+        const userResponse = await pool.query(
+            `SELECT vendor_id FROM Vendors WHERE owner_user_id = $1`,
+            [owner_user_id]
+        );
+        const user_id = userResponse.rows[0]?.vendor_id;
 
-            if (!name || !price || !Array.isArray(categories) || !unit) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Each item must have a name, price, unit, and categories",
-                });
-            }
-        }
-
+        // 3. Start Transaction
         await client.query("BEGIN");
 
-        //Check store ownership
+        // 4. Verify Store Ownership
         const storeResult = await client.query(
-            `
-                SELECT vendor_id
-                FROM Stores
-                WHERE store_id = $1
-            `,
+            `SELECT vendor_id FROM Stores WHERE store_id = $1`,
             [store_id]
         );
 
         if (storeResult.rowCount === 0) {
             await client.query("ROLLBACK");
-            return res.status(404).json({
-                success: false,
-                message: "Store not found",
-            });
+            return res.status(404).json({ success: false, message: "Store not found" });
         }
 
         if (storeResult.rows[0].vendor_id !== user_id) {
             await client.query("ROLLBACK");
-            return res.status(403).json({
-                success: false,
-                message:
-                    "You do not have permission to add items to this store",
-            });
+            return res.status(403).json({ success: false, message: "Permission denied" });
         }
 
-        // Bulk insert sql
-        const insertValues = [];
-        const valuePlaceholders = [];
+        // 5. Deduplicate Input Array (Client side duplicates)
+        // We use a Map to ensure we only try to insert unique names from the request itself
+        const uniqueInputItems = new Map();
+        
+        for (const item of items) {
+            if (!item.name || !item.price) continue; // Skip invalid items silently
+            
+            const normalizedName = item.name.trim().toLowerCase();
+            
+            // Only add if we haven't seen this name in this request yet
+            if (!uniqueInputItems.has(normalizedName)) {
+                uniqueInputItems.set(normalizedName, item);
+            }
+        }
 
-        items.forEach((item, index) => {
-            const baseIndex = index * 7;
-            insertValues.push(
-                store_id,
-                item.name,
-                item.description || null,
-                item.quantity || null,
-                item.unit,
-                item.price,
-                item.categories
-            );
-            valuePlaceholders.push(
-                `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6}, $${baseIndex + 7})`
-            );
+        const namesToCheck = Array.from(uniqueInputItems.keys());
+
+        if (namesToCheck.length === 0) {
+            await client.query("ROLLBACK");
+            return res.status(200).json({ success: true, message: "No valid items to add." });
+        }
+
+        // 6. Check Database for Existing Items
+        const existingRes = await client.query(
+            `SELECT item_name FROM Items WHERE store_id = $1 AND lower(item_name) = ANY($2)`,
+            [store_id, namesToCheck]
+        );
+
+        // Create a Set of names that already exist in DB
+        const existingNamesSet = new Set(existingRes.rows.map((r) => r.item_name.toLowerCase()));
+
+        // 7. Filter: Create Final Insert List (Input - ExistingDB)
+        const itemsToInsert = [];
+        
+        uniqueInputItems.forEach((item, normalizedName) => {
+            // Only add if NOT in database
+            if (!existingNamesSet.has(normalizedName)) {
+                itemsToInsert.push(item);
+            }
         });
 
-        const insertQuery = `
-            INSERT INTO Items (store_id, item_name, description, quantity, unit, price_per_unit_paise, categories)
-            VALUES ${valuePlaceholders.join(", ")}
-        `;
+        // 8. Bulk Insert (Only if there are items left)
+        if (itemsToInsert.length > 0) {
+            const insertValues = [];
+            const valuePlaceholders = [];
 
-        await client.query(insertQuery, insertValues);
+            itemsToInsert.forEach((item, index) => {
+                const baseIndex = index * 6;
+                insertValues.push(
+                    store_id,
+                    item.name.trim(), // Ensure we save the trimmed name
+                    item.description || null,
+                    item.quantity || null,
+                    item.price,
+                    item.categories || [] // Default to empty array if missing
+                );
+                valuePlaceholders.push(
+                    `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}, $${baseIndex + 6})`
+                );
+            });
+
+            const insertQuery = `
+                INSERT INTO Items (store_id, item_name, description, quantity, price_per_unit_paise, categories)
+                VALUES ${valuePlaceholders.join(", ")}
+            `;
+
+            await client.query(insertQuery, insertValues);
+        }
 
         await client.query("COMMIT");
 
+        console.log(`Request items: ${items.length}, Unique Input: ${uniqueInputItems.size}, Actually Inserted: ${itemsToInsert.length}`);
+
         return res.status(201).json({
             success: true,
-            message: "Items added successfully",
+            message: "Items processed successfully",
+            addedCount: itemsToInsert.length,
+            skippedCount: uniqueInputItems.size - itemsToInsert.length
         });
+
     } catch (err) {
+        await client.query("ROLLBACK");
         console.error("Error adding items:", err);
         return res.status(500).json({
             success: false,

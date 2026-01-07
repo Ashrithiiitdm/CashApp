@@ -8,12 +8,14 @@ import {
     getStoreDetails,
     getStoreRecentTransactions,
     extractItems,
+    addItems,
 } from "../controllers/storeController.js";
 
 const storeRouter = Router();
 
 storeRouter.post("/", jwtAuth, addStore);
 storeRouter.post("/extract-items", jwtAuth, upload.single("file"), extractItems);
+storeRouter.post("/add-items", jwtAuth, addItems);
 storeRouter.get("/", jwtAuth, getStores);
 storeRouter.get("/transactions/:store_id", getStoreRecentTransactions);
 storeRouter.get("/search", searchStores);
