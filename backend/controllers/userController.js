@@ -197,24 +197,24 @@ export const getRecentTransactions = async (req, res) => {
         const params = [user_id];
 
         if (isVendor) {
-            // For vendors: show transactions to their stores AND direct payments to vendor
+            // --- VENDOR VIEW ---
             baseQuery = `
                 (
                     -- Store payments: users → vendor's stores
                     SELECT
                         T.transaction_id,
                         'payment' AS transaction_category,
-                        
-                        -- For vendor, invert the transaction kind (they receive when user pays)
                         CASE
                             WHEN T.transaction_kind = 'debit' THEN 'credit'
                             WHEN T.transaction_kind = 'credit' THEN 'debit'
                         END AS transaction_kind,
-                        
                         T.transaction_status,
                         T.amount_paise,
                         T.currency,
                         T.created_at,
+                        
+                        -- ✅ ADDED: Metadata for Receipt Items
+                        T.metadata,
 
                         U.user_id    AS peer_user_id,
                         U.full_name  AS peer_name,
@@ -223,6 +223,9 @@ export const getRecentTransactions = async (req, res) => {
                         S.store_id,
                         S.display_name AS store_name,
                         S.store_logo,
+                        
+                        -- ✅ ADDED: Store Address for Receipt
+                        S.location_text AS address,
 
                         NULL::text AS transaction_type,
                         NULL::text AS stripe_payment_intent_id
@@ -237,7 +240,7 @@ export const getRecentTransactions = async (req, res) => {
                 UNION ALL
                 
                 (
-                    -- Direct payments: users → vendor (QR code scan)
+                    -- Direct payments: users → vendor
                     SELECT
                         T.transaction_id,
                         'payment' AS transaction_category,
@@ -246,6 +249,9 @@ export const getRecentTransactions = async (req, res) => {
                         T.amount_paise,
                         T.currency,
                         T.created_at,
+                        
+                        -- ✅ ADDED: Metadata (might be null for direct P2P)
+                        T.metadata,
 
                         U2.user_id    AS peer_user_id,
                         U2.full_name  AS peer_name,
@@ -254,6 +260,9 @@ export const getRecentTransactions = async (req, res) => {
                         NULL::text AS store_id,
                         NULL::text AS store_name,
                         NULL::text AS store_logo,
+                        
+                        -- ✅ ADDED: No address for P2P
+                        NULL::text AS address,
 
                         NULL::text AS transaction_type,
                         NULL::text AS stripe_payment_intent_id
@@ -271,7 +280,7 @@ export const getRecentTransactions = async (req, res) => {
             `;
             params.push(vendor_id);
         } else {
-            // For regular users: show user-to-user and user-to-store transactions
+            // --- REGULAR USER VIEW ---
             baseQuery = `
                 (
                     -- Payments: user ↔ user, user → store
@@ -283,6 +292,9 @@ export const getRecentTransactions = async (req, res) => {
                         T.amount_paise,
                         T.currency,
                         T.created_at,
+                        
+                        -- ✅ ADDED: Metadata for Receipt Items
+                        T.metadata,
 
                         U2.user_id    AS peer_user_id,
                         U2.full_name  AS peer_name,
@@ -291,6 +303,9 @@ export const getRecentTransactions = async (req, res) => {
                         S.store_id,
                         S.display_name AS store_name,
                         S.store_logo,
+                        
+                        -- ✅ ADDED: Store Address for Receipt
+                        S.location_text,
 
                         NULL::text AS transaction_type,
                         NULL::text AS stripe_payment_intent_id
@@ -309,7 +324,7 @@ export const getRecentTransactions = async (req, res) => {
                 UNION ALL
 
                 (
-                    -- Wallet transactions
+                    -- Wallet transactions (Add/Withdraw)
                     SELECT
                         WT.wallet_transaction_id AS transaction_id,
                         'wallet' AS transaction_category,
@@ -321,6 +336,9 @@ export const getRecentTransactions = async (req, res) => {
                         WT.amount_paise,
                         WT.currency,
                         WT.created_at,
+                        
+                        -- ✅ ADDED: No metadata for wallet txns
+                        NULL::jsonb AS metadata,
 
                         NULL::text AS peer_user_id,
                         CASE 
@@ -331,6 +349,9 @@ export const getRecentTransactions = async (req, res) => {
                         NULL::text AS store_id,
                         NULL::text AS store_name,
                         NULL::text AS store_logo,
+                        
+                        -- ✅ ADDED: No address
+                        NULL::text AS address,
 
                         WT.transaction_type,
                         WT.stripe_payment_intent_id
@@ -608,20 +629,31 @@ export const userToStore = async (req, res) => {
     const client = await pool.connect();
 
     try {
-        const { store_id, amount_paise, idempotency_key, metadata } = req.body;
+        // 1. Destructure cartItems explicitly
+        const { store_id, amount_paise, idempotency_key, cartItems } = req.body;
         const from_user_id = req.user_id;
 
-        if (
-            !store_id ||
-            !amount_paise ||
-            amount_paise <= 0 ||
-            !idempotency_key
-        ) {
+        if (!store_id || !amount_paise || amount_paise <= 0 || !idempotency_key) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid input",
             });
         }
+
+        // --- ✅ NEW: Construct Metadata for Receipt ---
+        let finalMetadata = {};
+        
+        if (cartItems && Array.isArray(cartItems) && cartItems.length > 0) {
+            finalMetadata = {
+                items: cartItems.map(item => ({
+                    name: item.name,       // Item Name
+                    qty: Number(item.quantity) || 1,
+                    price: Number(item.price), // Price per unit
+                    total: (Number(item.price) * (Number(item.quantity) || 1))
+                }))
+            };
+        }
+        // ----------------------------------------------
 
         await client.query("BEGIN");
 
@@ -676,8 +708,8 @@ export const userToStore = async (req, res) => {
             credit_account_id: vendorWalletId,
             credit_account_type: "wallet",
 
-            store_id, // 🔑 keeps store linkage
-            metadata: metadata || {}, // Store cart items
+            store_id, 
+            metadata: finalMetadata, // ✅ Pass the structured receipt data here
         });
 
         await client.query("COMMIT");

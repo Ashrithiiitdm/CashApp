@@ -9,6 +9,7 @@ import {
     getStoreRecentTransactions,
     extractItems,
     addItems,
+    updateStore,
 } from "../controllers/storeController.js";
 
 const storeRouter = Router();
@@ -20,5 +21,6 @@ storeRouter.get("/", jwtAuth, getStores);
 storeRouter.get("/transactions/:store_id", getStoreRecentTransactions);
 storeRouter.get("/search", searchStores);
 storeRouter.get("/:storeId", getStoreDetails);
+storeRouter.put("/update", jwtAuth, updateStore);
 
 export default storeRouter;

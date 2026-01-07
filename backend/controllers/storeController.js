@@ -273,6 +273,41 @@ export const getStoreDetails = async (req, res) => {
     }
 };
 
+export const updateStore = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { store_id, name, location } = req.body;
+        const owner_user_id = req.user_id; // From auth middleware
+
+        // 1. Verify Ownership
+        const checkOwner = await client.query(
+            `SELECT s.store_id 
+             FROM Stores s
+             JOIN Vendors v ON s.vendor_id = v.vendor_id
+             WHERE s.store_id = $1 AND v.owner_user_id = $2`,
+            [store_id, owner_user_id]
+        );
+
+        if (checkOwner.rowCount === 0) {
+            return res.status(403).json({ success: false, message: "Unauthorized or Store not found" });
+        }
+
+        // 2. Update Store
+        await client.query(
+            `UPDATE Stores SET display_name = $1, location_text = $2 WHERE store_id = $3`,
+            [name, location, store_id]
+        );
+
+        res.json({ success: true, message: "Store updated successfully" });
+
+    } catch (err) {
+        console.error("Update error:", err);
+        res.status(500).json({ success: false, message: "Server error" });
+    } finally {
+        client.release();
+    }
+};
+
 export const addItems = async (req, res) => {
     const client = await pool.connect();
 
