@@ -106,6 +106,7 @@ const AddStore = () => {
                     }
                 }
                 // ------------------------------------
+                const storeId = response.data.store_id;
 
                 // Navigate to the Edit Items page, passing store details and initial items
                 navigate("/vendor/edit-items", {
@@ -114,6 +115,7 @@ const AddStore = () => {
                             name: storeData.name,
                             address: storeData.address,
                             logoId: storeData.iconId,
+                            storeId,
                         },
                         initialItems: extractedItems,
                     },

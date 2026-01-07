@@ -5,9 +5,10 @@ import useMerchantStore from "../store/useMerchantStore";
 import {
     ArrowBackIcon,
     SearchIcon,
-    SearchStoresIcon,
     ShoppingCartIcon,
 } from "../components/Icons";
+
+import { StoreIconDisplay } from "../components/StoreIcons";
 
 const StoreDetails = () => {
     const navigate = useNavigate();
@@ -135,10 +136,10 @@ const StoreDetails = () => {
     return (
         <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 font-sans">
             {/* 1. Main Card Container 
-         - 'relative': Allows us to position the button absolutely inside this box.
-         - 'overflow-hidden': Ensures nothing spills out of the rounded corners.
-         - 'flex flex-col': Stacks Header -> List -> Button vertically.
-      */}
+            - 'relative': Allows us to position the button absolutely inside this box.
+            - 'overflow-hidden': Ensures nothing spills out of the rounded corners.
+            - 'flex flex-col': Stacks Header -> List -> Button vertically.
+        */}
             <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
                 {/* --- Header (Static - Does not scroll) --- */}
                 <div className="bg-[#f8f9fd] pt-8 pb-4 px-6 z-10">
@@ -150,7 +151,16 @@ const StoreDetails = () => {
                     </button>
 
                     <div className="flex flex-col items-center mb-6">
-                        <SearchStoresIcon className="w-12 h-12 text-gray-800 mb-2" />
+                        <div className="flex-shrink-0">
+                            <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden border border-blue-100 p-2">
+                                <StoreIconDisplay
+                                    // Backend usually returns 'store_logo' or 'icon_id'. 
+                                    // Passing both ensures it works regardless of exact DB column name.
+                                    iconId={currentStore.store_logo || currentStore.icon_id}
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                        </div>
                         <h2 className="text-xl font-bold text-gray-900">
                             {currentStore.display_name}
                         </h2>
@@ -238,13 +248,13 @@ const StoreDetails = () => {
                                                             </span>
                                                             {item.quantity !==
                                                                 null && (
-                                                                <span className="text-[9px] text-gray-500">
-                                                                    Stock:{" "}
-                                                                    {
-                                                                        item.quantity
-                                                                    }
-                                                                </span>
-                                                            )}
+                                                                    <span className="text-[9px] text-gray-500">
+                                                                        Stock:{" "}
+                                                                        {
+                                                                            item.quantity
+                                                                        }
+                                                                    </span>
+                                                                )}
                                                         </div>
 
                                                         <div className="flex justify-between items-end mt-auto">
@@ -321,10 +331,10 @@ const StoreDetails = () => {
                 </div>
 
                 {/* 3. Fixed Floating "View Cart" Button 
-            - 'absolute': Removes it from the flow and floats it on top.
-            - 'bottom-6': Pins it to the bottom of the card.
-            - 'z-20': Ensures it sits on top of the scrolling list.
-        */}
+                - 'absolute': Removes it from the flow and floats it on top.
+                - 'bottom-6': Pins it to the bottom of the card.
+                - 'z-20': Ensures it sits on top of the scrolling list.
+            */}
                 {totalItems > 0 && !isCartOpen && (
                     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 z-20">
                         <button

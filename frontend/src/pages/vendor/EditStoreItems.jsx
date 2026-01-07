@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
+import axios from '../../config/axiosConfig';
+import { useAuthStore } from '../../store/useAuthStore';
+import useMerchantStore from '../../store/useMerchantStore'; // 1. Import Merchant Store
 import {
     ArrowBackIcon,
     SearchIcon,
@@ -15,6 +18,10 @@ const EditStoreItems = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { storeDetails, initialItems } = location.state || {};
+    const { token } = useAuthStore();
+
+    // 2. Get the fetch action and loading state from the store
+    const { fetchStoreDetails, loading: storeLoading } = useMerchantStore();
 
     // Refs
     const fileInputRef = useRef(null);
@@ -26,25 +33,57 @@ const EditStoreItems = () => {
     const [editingCategory, setEditingCategory] = useState(null);
     const [tempCategoryName, setTempCategoryName] = useState("");
 
-    // Loading state for the "Scanning" simulation
+    // Loading states
     const [isScanning, setIsScanning] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
-    // Initialize
+    // --- INITIALIZATION LOGIC ---
     useEffect(() => {
-        if (initialItems && initialItems.length > 0) {
-            setItems(initialItems);
-            const initialOpen = {};
-            initialItems.forEach(i => initialOpen[i.category] = true);
-            setOpenCategories(initialOpen);
-        } else {
-            const dummy = [
-                { id: 1, name: "Classmate Notebook", price: 75, category: "Stationery", quantity: 50 },
-                { id: 2, name: "Blue Gel Pen", price: 10, category: "Stationery", quantity: 100 },
-            ];
-            setItems(dummy);
-            setOpenCategories({ "Stationery": true });
-        }
-    }, [initialItems]);
+        const initialize = async () => {
+            // Priority 1: Use items passed via navigation (e.g., from Image Extraction in AddStore)
+            if (initialItems && initialItems.length > 0) {
+                setItems(initialItems);
+                autoOpenCategories(initialItems);
+                return;
+            }
+
+            // Priority 2: Fetch from Backend using Merchant Store
+            // Handle various ID naming conventions just in case
+            const storeId = storeDetails?.storeId || storeDetails?.id || storeDetails?.store_id;
+            
+            if (storeId) {
+                // Call the store action to get details + items
+                const fetchedStore = await fetchStoreDetails(storeId);
+
+                if (fetchedStore && fetchedStore.items) {
+                    // 3. MAP Database Format -> UI Format
+                    const mappedItems = fetchedStore.items.map(dbItem => ({
+                        id: dbItem.item_id, // Important: Keep DB ID for updates
+                        name: dbItem.item_name,
+                        // Convert Paise to Rupees for the input field
+                        price: (dbItem.price_per_unit_paise / 100), 
+                        quantity: dbItem.quantity || 0,
+                        // UI uses single category string, DB uses array. Take first or default.
+                        category: (dbItem.categories && dbItem.categories.length > 0) 
+                                  ? dbItem.categories[0] 
+                                  : "Uncategorized"
+                    }));
+
+                    setItems(mappedItems);
+                    autoOpenCategories(mappedItems);
+                }
+            }
+        };
+
+        initialize();
+    }, [initialItems, storeDetails]); // Removed fetchStoreDetails from dependency to avoid loops
+
+    // Helper to open categories automatically based on items present
+    const autoOpenCategories = (itemList) => {
+        const initialOpen = {};
+        itemList.forEach(i => initialOpen[i.category] = true);
+        setOpenCategories(initialOpen);
+    };
 
     // --- ACTIONS ---
 
@@ -53,8 +92,9 @@ const EditStoreItems = () => {
     };
 
     const deleteItem = (id) => {
-
-        setItems(items.filter(i => i.id !== id));
+        if(window.confirm("Delete this item?")) {
+            setItems(items.filter(i => i.id !== id));
+        }
     };
 
     const addItemToCategory = (categoryName) => {
@@ -101,49 +141,113 @@ const EditStoreItems = () => {
         setEditingCategory(null);
     };
 
-    const handleImageUpload = (e) => {
+    // ✅ IMAGE EXTRACTION LOGIC
+    const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        // 1. File Size Check (1MB limit)
+        const fileSizeInMB = file.size / (1024 * 1024);
+        if (fileSizeInMB > 1) {
+            alert(`File size is ${fileSizeInMB.toFixed(2)} MB. Please upload a file smaller than 1 MB.`);
+            e.target.value = ''; // Reset input
+            return;
+        }
+
         setIsScanning(true);
 
-        // Simulate API Processing Time (1.5 seconds)
-        setTimeout(() => {
-            // Mock Extracted Data
-            const extractedItems = [
-                { id: uuidv4(), name: "Scanned Item A", price: 120, quantity: 5, category: "New Scan" },
-                { id: uuidv4(), name: "Scanned Item B", price: 45, quantity: 12, category: "New Scan" },
-                { id: uuidv4(), name: "Classmate Pen", price: 20, quantity: 10, category: "Stationery" }
-            ];
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
 
-            // Append to existing items
-            setItems(prev => [...prev, ...extractedItems]);
+            // 2. Call API
+            const response = await axios.post(
+                "/api/stores/extract-items",
+                formData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
 
-            // Auto-open the categories where items were added
-            setOpenCategories(prev => {
-                const newState = { ...prev };
-                extractedItems.forEach(item => newState[item.category] = true);
-                return newState;
-            });
+            if (response.data.success) {
+                // 3. Process Extracted Items
+                const extractedItems = response.data.items.map(item => ({
+                    id: uuidv4(),
+                    name: item.name || "Unknown Item",
+                    price: item.price || 0,
+                    quantity: item.quantity || 1,
+                    category: item.category || "Extracted Items" 
+                }));
 
+                // 4. ✅ APPEND to existing items (Using spread operator)
+                setItems(prev => [...prev, ...extractedItems]);
+
+                // 5. Auto-open categories
+                setOpenCategories(prev => {
+                    const newState = { ...prev };
+                    extractedItems.forEach(item => newState[item.category] = true);
+                    return newState;
+                });
+
+                console.log(`✅ Extracted & Appended ${extractedItems.length} items`);
+                alert(`Successfully added ${extractedItems.length} items to the list!`);
+            } else {
+                console.error("⚠️ Extraction failed:", response.data.message);
+                alert("Failed to extract items. Please try again or add manually.");
+            }
+
+        } catch (error) {
+            console.error("❌ Error during extraction:", error);
+            alert("Error connecting to extraction service.");
+        } finally {
             setIsScanning(false);
-            alert(`Extracted ${extractedItems.length} items from image!`);
-
-            // Reset input
-            e.target.value = null;
-        }, 1500);
+            e.target.value = null; // Reset input to allow re-uploading same file
+        }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         for (let item of items) {
-            if (!item.name.trim() || !item.price) {
+            if (!item.name || !String(item.price).trim()) {
                 alert(`Please fill in Name and Price for all items in "${item.category}".`);
                 return;
             }
         }
-        console.log("Saving:", items);
-        alert("Saved Successfully!");
-        navigate('/vendor-dashboard');
+
+        const storeId = storeDetails?.storeId || storeDetails?.id || storeDetails?.store_id;
+        if (!storeId) {
+            alert("Missing store ID. Please create the store first.");
+            return;
+        }
+
+        const payloadItems = items.map(item => ({
+            name: item.name.trim(),
+            // Ensure price is sent as Paise (Rupees * 100)
+            price: Math.round((Number(item.price) || 0) * 100),
+            categories: item.categories || (item.category ? [item.category] : []),
+            quantity: Number(item.quantity) || 0
+        }));
+
+        setIsSaving(true);
+        try {
+            const response = await axios.post('/api/stores/add-items', { store_id: storeId, items: payloadItems }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data?.success) {
+                alert("Items saved successfully!");
+                navigate(-1);
+            } else {
+                alert(response.data?.message || "Failed to add items");
+            }
+        } catch (error) {
+            console.error("Error saving items:", error);
+            alert(error.response?.data?.message || "Error adding items");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // --- Grouping Logic ---
@@ -189,7 +293,7 @@ const EditStoreItems = () => {
                             type="text"
                             placeholder="Search items..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value, token)}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full py-3.5 pl-12 pr-4 rounded-full bg-white border border-gray-200 shadow-sm outline-none text-gray-700 text-md placeholder-gray-400 focus:border-blue-400 transition-all"
                         />
                         <div className="absolute left-4 top-1/2 -translate-y-1/2">
@@ -197,17 +301,18 @@ const EditStoreItems = () => {
                         </div>
                     </div>
 
+                    {/* Upload Button */}
                     <div className="w-full">
                         <input
                             type="file"
                             ref={fileInputRef}
                             className="hidden"
-                            accept="image/*"
+                            accept="image/*,application/pdf"
                             onChange={handleImageUpload}
                         />
                         <button
                             onClick={() => fileInputRef.current.click()}
-                            disabled={isScanning}
+                            disabled={isScanning || storeLoading}
                             className="w-full py-2.5 rounded-xl bg-gray-100 border border-dashed border-gray-300 text-gray-600 font-bold text-xs hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
                         >
                             {isScanning ? (
@@ -215,9 +320,10 @@ const EditStoreItems = () => {
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
                                     <span>Extracting items...</span>
                                 </>
+                            ) : storeLoading ? (
+                                <span>Loading store data...</span>
                             ) : (
                                 <>
-                                    {/* Simple Upload Icon SVG if you don't have one imported */}
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                         <polyline points="17 8 12 3 7 8"></polyline>
@@ -240,8 +346,20 @@ const EditStoreItems = () => {
                         <div className="w-6"></div>
                     </div>
 
-                    {/* List Rendering (Same as before) */}
-                    {Object.keys(groupedItems).sort().map(category => (
+                    {storeLoading && (
+                        <div className="text-center py-10 text-gray-400 flex flex-col items-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                            <span>Fetching items...</span>
+                        </div>
+                    )}
+
+                    {!storeLoading && Object.keys(groupedItems).length === 0 && (
+                        <div className="text-center py-10 text-gray-400 text-sm">
+                            {searchQuery ? "No items found." : "No categories yet. Create one below!"}
+                        </div>
+                    )}
+
+                    {!storeLoading && Object.keys(groupedItems).sort().map(category => (
                         <div key={category} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                             <div className="flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors">
                                 <div className="flex-1 flex items-center gap-2" onClick={(e) => {
@@ -301,8 +419,8 @@ const EditStoreItems = () => {
                 </div>
 
                 <div className="p-4 bg-white border-t border-gray-100 z-20">
-                    <button onClick={handleSave} className="w-full bg-[#22c55e] hover:bg-[#1fa850] text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-95 transition-all">
-                        Save Changes
+                    <button onClick={handleSave} disabled={isSaving || storeLoading} className={`w-full ${isSaving || storeLoading ? 'opacity-60 cursor-not-allowed' : 'bg-[#22c55e] hover:bg-[#1fa850]'} text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-95 transition-all`}>
+                        {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
 
@@ -311,7 +429,7 @@ const EditStoreItems = () => {
     );
 };
 
-// ItemRow component remains exactly the same as previous response
+// ItemRow Component (Unchanged)
 const ItemRow = ({ item, onChange, onDelete }) => (
     <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-200">
         <div className="flex-1 min-w-0">
