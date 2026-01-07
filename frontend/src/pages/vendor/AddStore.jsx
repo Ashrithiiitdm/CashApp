@@ -4,6 +4,7 @@ import { ArrowBackIcon, ImageIcon } from "../../components/Icons";
 import { STORE_ICONS_MAP, StoreIconDisplay } from "../../components/StoreIcons";
 import axios from "../../config/axiosConfig";
 import { useAuthStore } from "../../store/useAuthStore";
+import toast from "react-hot-toast"; // ✅ Import toast
 
 const AddStore = () => {
     const navigate = useNavigate();
@@ -30,22 +31,26 @@ const AddStore = () => {
             const fileSizeInMB = file.size / (1024 * 1024);
             
             if (fileSizeInMB > 1) {
-                alert(`File size is ${fileSizeInMB.toFixed(2)} MB. Please upload a file smaller than 1 MB.`);
+                // ❌ File too large
+                toast.error(`File size is ${fileSizeInMB.toFixed(2)} MB. Please upload a file smaller than 1 MB.`);
                 e.target.value = ''; // Reset file input
                 return;
             }
             
             setStoreData({ ...storeData, imageFile: file });
+            toast.success("File selected");
         }
     };
 
     const handleCreate = async () => {
         if (!storeData.name || !storeData.address) {
-            alert("Please fill in store name and address.");
+            // ❌ Validation error
+            toast.error("Please fill in store name and address.");
             return;
         }
 
         setIsLoading(true);
+        const loadingToast = toast.loading("Creating store...");
 
         try {
             // Call the backend API to create the store
@@ -54,7 +59,7 @@ const AddStore = () => {
                 {
                     name: storeData.name,
                     location: storeData.address,
-                    store_logo: storeData.iconId, // Send the icon ID (e.g., "store_1")
+                    store_logo: storeData.iconId, 
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -66,6 +71,9 @@ const AddStore = () => {
                 if (storeData.imageFile) {
                     console.log("📤 Uploading file for item extraction...");
                     setIsExtracting(true);
+                    
+                    // Update toast message
+                    toast.loading("Extracting items from file...", { id: loadingToast });
 
                     try {
                         const formData = new FormData();
@@ -84,31 +92,27 @@ const AddStore = () => {
 
                         if (extractResponse.data.success) {
                             extractedItems = extractResponse.data.items;
-                            console.log(
-                                `✅ Extracted ${extractedItems.length} items`
-                            );
+                            console.log(`✅ Extracted ${extractedItems.length} items`);
+                            toast.success(`Extracted ${extractedItems.length} items!`, { id: loadingToast });
                         } else {
-                            console.error(
-                                "⚠️  Extraction failed:",
-                                extractResponse.data.message
-                            );
-                            alert(
-                                "Failed to extract items. You can add them manually."
-                            );
+                            console.error("⚠️  Extraction failed:", extractResponse.data.message);
+                            toast.error("Failed to extract items. You can add them manually.", { id: loadingToast });
                         }
                     } catch (extractError) {
                         console.error("❌ Error during extraction:", extractError);
-                        alert(
-                            "Error extracting items from file. You can add them manually."
-                        );
+                        toast.error("Error extracting items. You can add them manually.", { id: loadingToast });
                     } finally {
                         setIsExtracting(false);
                     }
+                } else {
+                    // Success without extraction
+                    toast.success("Store created successfully!", { id: loadingToast });
                 }
+                
                 // ------------------------------------
                 const storeId = response.data.store_id;
 
-                // Navigate to the Edit Items page, passing store details and initial items
+                // Navigate to the Edit Items page
                 navigate("/vendor/edit-items", {
                     state: {
                         storeDetails: {
@@ -123,9 +127,10 @@ const AddStore = () => {
             }
         } catch (error) {
             console.error("Error creating store:", error);
-            alert(
-                error.response?.data?.message ||
-                    "Failed to create store. Please try again."
+            // ❌ Creation Failed
+            toast.error(
+                error.response?.data?.message || "Failed to create store. Please try again.",
+                { id: loadingToast }
             );
         } finally {
             setIsLoading(false);

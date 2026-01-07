@@ -1,9 +1,10 @@
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Use router instead of window.location
+import { useNavigate } from "react-router-dom";
 import axios from "../config/axiosConfig";
 import { useAuthStore } from "../store/useAuthStore";
+import toast from "react-hot-toast"; // ✅ Import toast
 
 const GoogleSignUp = ({ activeTab = "User" }) => {
     const [loading, setLoading] = useState(false);
@@ -12,6 +13,9 @@ const GoogleSignUp = ({ activeTab = "User" }) => {
 
     const handleGoogleSignUp = async () => {
         setLoading(true);
+        // ✅ Optional: Start a loading toast
+        const toastId = toast.loading("Connecting to Google...");
+
         try {
             const provider = new GoogleAuthProvider();
             const result = await signInWithPopup(auth, provider);
@@ -37,14 +41,15 @@ const GoogleSignUp = ({ activeTab = "User" }) => {
             // Update auth store with user data and token
             login(data.user, data.token);
 
-            alert("Google sign-up successful!");
+            // ✅ Success Toast
+            toast.success("Google sign-up successful!", { id: toastId });
             
-            // 5. Navigate properly without hard reload
             navigate("/home"); 
 
         } catch (error) {
             console.error("Error with Google sign-up:", error);
-            alert(error.message || "Failed to sign up with Google");
+            // ✅ Error Toast
+            toast.error(error.message || "Failed to sign up with Google", { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -58,7 +63,7 @@ const GoogleSignUp = ({ activeTab = "User" }) => {
                 type="button"
                 onClick={handleGoogleSignUp}
                 disabled={loading}
-                className="flex items-center justify-center gap-x-2 border border-gray-300 p-2.5 hover:bg-gray-200 hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-x-2 border border-gray-300 p-2.5 hover:bg-gray-200 hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed rounded-full" // Added rounded-full for better look if desired
             >
                 {/* Google SVG Icon */}
                 <svg className="w-5 h-5" viewBox="0 0 24 24">

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from '../../config/axiosConfig'; // Import axios
-import { useAuthStore } from '../../store/useAuthStore'; // Import auth store for token
-import useMerchantStore from '../../store/useMerchantStore'; // Import merchant store for updating store list
+import axios from '../../config/axiosConfig'; 
+import { useAuthStore } from '../../store/useAuthStore'; 
+import useMerchantStore from '../../store/useMerchantStore'; 
+import toast from 'react-hot-toast'; // ✅ Import toast
 import { 
   ArrowBackIcon, 
   EditIcon,
@@ -32,16 +33,18 @@ const ViewStore = () => {
 
   const handleUpdateStore = async (field) => {
     if (!name.trim() || !address.trim()) {
-        alert("Name and Address cannot be empty.");
+        toast.error("Name and Address cannot be empty."); // ✅ Toast
         return;
     }
 
     setIsSaving(true);
+    const toastId = toast.loading("Updating store details..."); // ✅ Loading Toast
+
     try {
         const response = await axios.put('/api/stores/update', {
             store_id: storeDetails.storeId,
             name: name,
-            location: address // Sending 'location' as per your backend expectation
+            location: address 
         }, {
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -50,7 +53,7 @@ const ViewStore = () => {
             updateStoreInList(storeDetails.storeId, {
                 name: name,
                 address: address,
-                display_name: name, // Redundancy for safety
+                display_name: name, 
                 location: address 
             });
 
@@ -58,12 +61,14 @@ const ViewStore = () => {
             if (field === 'name') setIsEditingName(false);
             if (field === 'address') setIsEditingAddress(false);
             
+            toast.success("Store updated successfully!", { id: toastId }); // ✅ Success Toast
+            
         } else {
-            alert(response.data.message || "Failed to update store.");
+            toast.error(response.data.message || "Failed to update store.", { id: toastId }); // ✅ Error Toast
         }
     } catch (error) {
         console.error("Update failed:", error);
-        alert("Error updating store. Please try again.");
+        toast.error("Error updating store. Please try again.", { id: toastId }); // ✅ Error Toast
     } finally {
         setIsSaving(false);
     }
@@ -71,7 +76,6 @@ const ViewStore = () => {
 
   // Navigation Handlers
   const handleEditItems = () => {
-    // Pass the *current* name/address in case they were just edited
     navigate('/vendor/edit-items', { 
         state: { 
             storeDetails: { ...storeDetails, name, address } 
@@ -101,118 +105,118 @@ const ViewStore = () => {
 
           {/* Content */}
           <div className="flex-1 px-8 pt-4 flex flex-col">
-             
-             {/* Store Title & Details Section */}
-             <div className="flex flex-col items-center mb-10">
-                <div className="w-24 h-24 mb-4">
-                   <StoreIconDisplay iconId={storeDetails.logoId} className="w-full h-full object-contain" />
-                </div>
-                
-                {/* --- Editable Name --- */}
-                <div className="flex items-center justify-center gap-2 mb-6 w-full">
-                   {isEditingName ? (
-                       <div className="flex items-center gap-2 w-full max-w-[250px]">
-                           <input 
+              
+              {/* Store Title & Details Section */}
+              <div className="flex flex-col items-center mb-10">
+                 <div className="w-24 h-24 mb-4">
+                    <StoreIconDisplay iconId={storeDetails.logoId} className="w-full h-full object-contain" />
+                 </div>
+                 
+                 {/* --- Editable Name --- */}
+                 <div className="flex items-center justify-center gap-2 mb-6 w-full">
+                    {isEditingName ? (
+                        <div className="flex items-center gap-2 w-full max-w-[250px]">
+                            <input 
                                type="text" 
                                value={name}
                                onChange={(e) => setName(e.target.value)}
                                className="text-xl font-bold text-gray-900 text-center border-b-2 border-blue-500 outline-none w-full py-1"
                                autoFocus
-                           />
-                           <button 
+                            />
+                            <button 
                                onClick={() => handleUpdateStore('name')}
                                disabled={isSaving}
                                className="bg-green-100 text-green-600 p-1.5 rounded-full hover:bg-green-200"
-                           >
+                            >
                                {/* Checkmark SVG */}
                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                           </button>
-                       </div>
-                   ) : (
-                       <>
-                           <h1 className="text-2xl font-bold text-gray-900 text-center tracking-tight truncate max-w-[250px]">
-                              {name}
-                           </h1>
-                           <button 
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <h1 className="text-2xl font-bold text-gray-900 text-center tracking-tight truncate max-w-[250px]">
+                               {name}
+                            </h1>
+                            <button 
                                onClick={() => setIsEditingName(true)}
                                className="text-blue-500 hover:bg-blue-50 p-1 rounded-full transition-colors"
-                           >
-                              <EditIcon className="w-5 h-5" /> 
-                           </button>
-                       </>
-                   )}
-                </div>
+                            >
+                               <EditIcon className="w-5 h-5" /> 
+                            </button>
+                        </>
+                    )}
+                 </div>
 
-                {/* --- Editable Address --- */}
-                <div className="w-full">
-                   <div className="flex items-center gap-2 mb-1.5">
-                      <span className="font-bold text-sm text-gray-800">Address</span>
-                      {!isEditingAddress && (
-                          <button 
-                             onClick={() => setIsEditingAddress(true)}
-                             className="text-blue-500 hover:bg-blue-50 p-1 rounded-full transition-colors"
-                          >
-                             <EditIcon className="w-3.5 h-3.5" />
-                          </button>
-                      )}
-                   </div>
-                   
-                   {isEditingAddress ? (
-                       <div className="relative">
-                           <textarea 
+                 {/* --- Editable Address --- */}
+                 <div className="w-full">
+                    <div className="flex items-center gap-2 mb-1.5">
+                       <span className="font-bold text-sm text-gray-800">Address</span>
+                       {!isEditingAddress && (
+                           <button 
+                              onClick={() => setIsEditingAddress(true)}
+                              className="text-blue-500 hover:bg-blue-50 p-1 rounded-full transition-colors"
+                           >
+                              <EditIcon className="w-3.5 h-3.5" />
+                           </button>
+                       )}
+                    </div>
+                    
+                    {isEditingAddress ? (
+                        <div className="relative">
+                            <textarea 
                                value={address}
                                onChange={(e) => setAddress(e.target.value)}
                                className="w-full text-sm text-gray-800 border-2 border-blue-100 rounded-xl p-3 focus:border-blue-400 outline-none resize-none bg-gray-50"
                                rows={3}
                                autoFocus
-                           />
-                           <div className="flex justify-end gap-2 mt-2">
-                               <button 
-                                   onClick={() => { setIsEditingAddress(false); setAddress(storeDetails.address); }}
-                                   className="text-xs text-gray-500 px-3 py-1.5 hover:bg-gray-100 rounded-lg"
-                               >
-                                   Cancel
-                               </button>
-                               <button 
-                                   onClick={() => handleUpdateStore('address')}
-                                   disabled={isSaving}
-                                   className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 font-bold"
-                               >
-                                   {isSaving ? "Saving..." : "Save"}
-                               </button>
-                           </div>
-                       </div>
-                   ) : (
-                       <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">
-                          {address || "No address provided for this store."}
-                       </p>
-                   )}
-                </div>
-             </div>
+                            />
+                            <div className="flex justify-end gap-2 mt-2">
+                                <button 
+                                    onClick={() => { setIsEditingAddress(false); setAddress(storeDetails.address); }}
+                                    className="text-xs text-gray-500 px-3 py-1.5 hover:bg-gray-100 rounded-lg"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={() => handleUpdateStore('address')}
+                                    disabled={isSaving}
+                                    className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 font-bold"
+                                >
+                                    {isSaving ? "Saving..." : "Save"}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-wrap">
+                           {address || "No address provided for this store."}
+                        </p>
+                    )}
+                 </div>
+              </div>
 
-             {/* Action Buttons (Unchanged) */}
-             <div className="space-y-5 mt-2">
-                <button 
-                   onClick={handleEditItems}
-                   className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-lg flex justify-center items-center"
-                >
-                   View/Edit Item List
-                </button>
+              {/* Action Buttons */}
+              <div className="space-y-5 mt-2">
+                 <button 
+                    onClick={handleEditItems}
+                    className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-lg flex justify-center items-center"
+                 >
+                    View/Edit Item List
+                 </button>
 
-                <button 
-                   onClick={handleTransactionHistory}
-                   className="w-full bg-[#1581BF] hover:bg-[#1271a3] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-lg flex justify-center items-center"
-                >
-                   Transaction History
-                </button>
+                 <button 
+                    onClick={handleTransactionHistory}
+                    className="w-full bg-[#1581BF] hover:bg-[#1271a3] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-lg flex justify-center items-center"
+                 >
+                    Transaction History
+                 </button>
 
-                <button 
-                   onClick={() => alert("Employee management coming soon!")}
-                   className="w-full bg-[#fbbf24] hover:bg-[#f59e0b] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-lg flex justify-center items-center"
-                >
-                   Add/View employee
-                </button>
-             </div>
+                 <button 
+                    onClick={() => toast("Employee management coming soon!", { icon: '🚧' })}
+                    className="w-full bg-[#fbbf24] hover:bg-[#f59e0b] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-lg flex justify-center items-center"
+                 >
+                    Add/View employee
+                 </button>
+              </div>
           </div>
        </div>
     </div>

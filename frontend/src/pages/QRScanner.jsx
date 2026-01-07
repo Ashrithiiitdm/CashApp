@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { useNavigate } from "react-router-dom";
 import axios from "../config/axiosConfig";
+import toast from "react-hot-toast"; // ✅ Import toast
 import {
   ArrowBackIcon,
   FlipCameraIcon,
@@ -49,6 +50,7 @@ const QRScanner = () => {
         );
       } catch (err) {
         console.error("Camera start error:", err);
+        toast.error("Failed to start camera");
       }
     };
 
@@ -71,6 +73,7 @@ const QRScanner = () => {
     if (isLockedRef.current) return;
     isLockedRef.current = true;
 
+    // 1. Stop the scanner immediately
     try {
       if (
         scannerRef.current?.isScanning &&
@@ -83,15 +86,14 @@ const QRScanner = () => {
     } catch { }
 
     console.log("Scanned:", decodedText);
-    alert(`Scanned QR Data:\n${decodedText}`);
+    
+    // ✅ Start Loading Toast
+    const toastId = toast.loading("Processing QR Code...");
 
-    // Parse QR data and resolve it
+    // 2. Parse and Resolve
     try {
       const qrData = JSON.parse(decodedText);
       
-      // Transform QR data to backend format
-      // QR format: {"id": "...", "type": "user"/"store"}
-      // Backend expects: {"user_id": "..."} or {"store_id": "..."}
       const backendPayload = {};
       
       if (qrData.type === "user") {
@@ -99,7 +101,8 @@ const QRScanner = () => {
       } else if (qrData.type === "store") {
         backendPayload.store_id = qrData.id;
       } else {
-        alert("Invalid QR code type");
+        // ❌ Invalid Type
+        toast.error("Invalid QR code type", { id: toastId });
         isLockedRef.current = false;
         return;
       }
@@ -114,31 +117,32 @@ const QRScanner = () => {
       if (response.data.success) {
         const { receiverType, receiverId, receiverName } = response.data;
         
-        // Create contact object for MoneyTransfer
         const contact = {
           type: receiverType, // "user" or "store"
           id: receiverId,
           name: receiverName,
         };
         
-        // Add specific ID field based on type
         if (receiverType === "user") {
           contact.user_id = receiverId;
         } else if (receiverType === "store") {
           contact.store_id = receiverId;
         }
         
-        console.log("Navigating to MoneyTransfer with contact:", contact);
+        // ✅ Success
+        toast.success(`Found: ${receiverName}`, { id: toastId });
         
-        // Navigate to MoneyTransfer with contact
         navigate("/moneytransfer", { state: { contact } });
       } else {
-        alert(response.data.message || "Invalid QR code");
+        // ❌ Backend Validation Failed
+        toast.error(response.data.message || "Invalid QR code", { id: toastId });
         isLockedRef.current = false;
       }
     } catch (err) {
       console.error("QR Resolution error:", err);
-      alert(`Error: ${err.response?.data?.message || err.message || "Invalid QR code format or server error"}`);
+      // ❌ Error Handling
+      const errMsg = err.response?.data?.message || "Invalid QR format";
+      toast.error(errMsg, { id: toastId });
       isLockedRef.current = false;
     }
   };
@@ -162,20 +166,24 @@ const QRScanner = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Toast for processing image
+    const loadId = toast.loading("Scanning image...");
+
     try {
       await safeStopScanner(); // 🔴 FULL STOP
 
       const imageScanner = new Html5Qrcode("image-reader");
       const result = await imageScanner.scanFile(file, true);
+      
+      toast.dismiss(loadId); // Dismiss image loading toast before onScanSuccess starts its own
       onScanSuccess(result);
 
     } catch (err) {
-      alert("No QR code found in image");
+      toast.error("No QR code found in image", { id: loadId });
     } finally {
       e.target.value = "";
     }
   };
-
 
 
   // =========================
@@ -185,8 +193,6 @@ const QRScanner = () => {
     await safeStopScanner();
     navigate(-1);
   };
-
-
 
 
   return (

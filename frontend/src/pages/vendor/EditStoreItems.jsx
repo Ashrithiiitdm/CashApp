@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import axios from '../../config/axiosConfig';
 import { useAuthStore } from '../../store/useAuthStore';
-import useMerchantStore from '../../store/useMerchantStore'; // 1. Import Merchant Store
+import useMerchantStore from '../../store/useMerchantStore'; 
+import toast from 'react-hot-toast'; // ✅ Import toast
 import {
     ArrowBackIcon,
     SearchIcon,
@@ -20,7 +21,7 @@ const EditStoreItems = () => {
     const { storeDetails, initialItems } = location.state || {};
     const { token } = useAuthStore();
 
-    // 2. Get the fetch action and loading state from the store
+    // Get the fetch action and loading state from the store
     const { fetchStoreDetails, loading: storeLoading } = useMerchantStore();
 
     // Refs
@@ -40,7 +41,7 @@ const EditStoreItems = () => {
     // --- INITIALIZATION LOGIC ---
     useEffect(() => {
         const initialize = async () => {
-            // Priority 1: Use items passed via navigation (e.g., from Image Extraction in AddStore)
+            // Priority 1: Use items passed via navigation
             if (initialItems && initialItems.length > 0) {
                 setItems(initialItems);
                 autoOpenCategories(initialItems);
@@ -48,22 +49,17 @@ const EditStoreItems = () => {
             }
 
             // Priority 2: Fetch from Backend using Merchant Store
-            // Handle various ID naming conventions just in case
             const storeId = storeDetails?.storeId || storeDetails?.id || storeDetails?.store_id;
             
             if (storeId) {
-                // Call the store action to get details + items
                 const fetchedStore = await fetchStoreDetails(storeId);
 
                 if (fetchedStore && fetchedStore.items) {
-                    // 3. MAP Database Format -> UI Format
                     const mappedItems = fetchedStore.items.map(dbItem => ({
-                        id: dbItem.item_id, // Important: Keep DB ID for updates
+                        id: dbItem.item_id, 
                         name: dbItem.item_name,
-                        // Convert Paise to Rupees for the input field
                         price: (dbItem.price_per_unit_paise / 100), 
                         quantity: dbItem.quantity || 0,
-                        // UI uses single category string, DB uses array. Take first or default.
                         category: (dbItem.categories && dbItem.categories.length > 0) 
                                   ? dbItem.categories[0] 
                                   : "Uncategorized"
@@ -76,9 +72,8 @@ const EditStoreItems = () => {
         };
 
         initialize();
-    }, [initialItems, storeDetails]); // Removed fetchStoreDetails from dependency to avoid loops
+    }, [initialItems, storeDetails]); 
 
-    // Helper to open categories automatically based on items present
     const autoOpenCategories = (itemList) => {
         const initialOpen = {};
         itemList.forEach(i => initialOpen[i.category] = true);
@@ -94,6 +89,7 @@ const EditStoreItems = () => {
     const deleteItem = (id) => {
         if(window.confirm("Delete this item?")) {
             setItems(items.filter(i => i.id !== id));
+            toast.success("Item deleted"); // ✅ Added toast confirmation
         }
     };
 
@@ -128,7 +124,10 @@ const EditStoreItems = () => {
 
     const saveCategoryName = (oldName) => {
         const newName = tempCategoryName.trim();
-        if (!newName) { alert("Category name cannot be empty"); return; }
+        if (!newName) { 
+            toast.error("Category name cannot be empty"); // ✅ Toast
+            return; 
+        }
         if (newName === oldName) { setEditingCategory(null); return; }
 
         setItems(prev => prev.map(item => item.category === oldName ? { ...item, category: newName } : item));
@@ -149,18 +148,19 @@ const EditStoreItems = () => {
         // 1. File Size Check (1MB limit)
         const fileSizeInMB = file.size / (1024 * 1024);
         if (fileSizeInMB > 1) {
-            alert(`File size is ${fileSizeInMB.toFixed(2)} MB. Please upload a file smaller than 1 MB.`);
-            e.target.value = ''; // Reset input
+            // ✅ Toast
+            toast.error(`File too large (${fileSizeInMB.toFixed(2)} MB). Max 1 MB allowed.`);
+            e.target.value = ''; 
             return;
         }
 
         setIsScanning(true);
+        const toastId = toast.loading("Analyzing image for items..."); // ✅ Loading Toast
 
         try {
             const formData = new FormData();
             formData.append("file", file);
 
-            // 2. Call API
             const response = await axios.post(
                 "/api/stores/extract-items",
                 formData,
@@ -173,7 +173,6 @@ const EditStoreItems = () => {
             );
 
             if (response.data.success) {
-                // 3. Process Extracted Items
                 const extractedItems = response.data.items.map(item => ({
                     id: uuidv4(),
                     name: item.name || "Unknown Item",
@@ -182,10 +181,8 @@ const EditStoreItems = () => {
                     category: item.category || "Extracted Items" 
                 }));
 
-                // 4. ✅ APPEND to existing items (Using spread operator)
                 setItems(prev => [...prev, ...extractedItems]);
 
-                // 5. Auto-open categories
                 setOpenCategories(prev => {
                     const newState = { ...prev };
                     extractedItems.forEach(item => newState[item.category] = true);
@@ -193,58 +190,63 @@ const EditStoreItems = () => {
                 });
 
                 console.log(`✅ Extracted & Appended ${extractedItems.length} items`);
-                alert(`Successfully added ${extractedItems.length} items to the list!`);
+                // ✅ Success Toast
+                toast.success(`Found ${extractedItems.length} items!`, { id: toastId });
             } else {
                 console.error("⚠️ Extraction failed:", response.data.message);
-                alert("Failed to extract items. Please try again or add manually.");
+                // ✅ Error Toast
+                toast.error("Failed to extract items. Please add manually.", { id: toastId });
             }
 
         } catch (error) {
             console.error("❌ Error during extraction:", error);
-            alert("Error connecting to extraction service.");
+            // ✅ Error Toast
+            toast.error("Error connecting to extraction service.", { id: toastId });
         } finally {
             setIsScanning(false);
-            e.target.value = null; // Reset input to allow re-uploading same file
+            e.target.value = null; 
         }
     };
 
     const handleSave = async () => {
         for (let item of items) {
             if (!item.name || !String(item.price).trim()) {
-                alert(`Please fill in Name and Price for all items in "${item.category}".`);
+                // ✅ Toast
+                toast.error(`Missing details for items in "${item.category}".`);
                 return;
             }
         }
 
         const storeId = storeDetails?.storeId || storeDetails?.id || storeDetails?.store_id;
         if (!storeId) {
-            alert("Missing store ID. Please create the store first.");
+            toast.error("Missing store ID. Please create the store first."); // ✅ Toast
             return;
         }
 
         const payloadItems = items.map(item => ({
             name: item.name.trim(),
-            // Ensure price is sent as Paise (Rupees * 100)
             price: Math.round((Number(item.price) || 0) * 100),
             categories: item.categories || (item.category ? [item.category] : []),
             quantity: Number(item.quantity) || 0
         }));
 
         setIsSaving(true);
+        const toastId = toast.loading("Saving store inventory..."); // ✅ Loading Toast
+
         try {
             const response = await axios.post('/api/stores/add-items', { store_id: storeId, items: payloadItems }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             if (response.data?.success) {
-                alert("Items saved successfully!");
+                toast.success("Items saved successfully!", { id: toastId }); // ✅ Success Toast
                 navigate(-1);
             } else {
-                alert(response.data?.message || "Failed to add items");
+                toast.error(response.data?.message || "Failed to add items", { id: toastId }); // ✅ Error Toast
             }
         } catch (error) {
             console.error("Error saving items:", error);
-            alert(error.response?.data?.message || "Error adding items");
+            toast.error(error.response?.data?.message || "Error adding items", { id: toastId }); // ✅ Error Toast
         } finally {
             setIsSaving(false);
         }

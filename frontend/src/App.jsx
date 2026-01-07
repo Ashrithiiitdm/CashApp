@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './store/useAuthStore'; // Import store to check roles
+import { useAuthStore } from './store/useAuthStore'; 
+import { Toaster } from 'react-hot-toast'; // ✅ Imported here
 
 // --- Pages ---
 import Home from './pages/Home.jsx';
@@ -24,7 +25,6 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import ViewStore from './pages/vendor/ViewStore.jsx';
 
 // --- Helper Component: Dashboard Resolver ---
-// This decides whether to show the User Home or Vendor Dashboard
 const DashboardResolver = () => {
   const { user } = useAuthStore();
   if (user?.role === 'vendor') {
@@ -36,6 +36,19 @@ const DashboardResolver = () => {
 function App() {
   return (
     <div>
+      {/* ✅ FIX: Render the Toaster component here so toasts can appear */}
+      <Toaster 
+        position="top-center" 
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          },
+        }} 
+      />
+
       <Routes>
         {/* --- Public Routes --- */}
         <Route path="/signup" element={<Signup />} />
@@ -48,7 +61,6 @@ function App() {
             </ProtectedRoute>
         } />
         
-        {/* Force /home to also be the smart resolver */}
         <Route path="/home" element={
             <ProtectedRoute>
                 <DashboardResolver />
@@ -125,7 +137,7 @@ function App() {
             </ProtectedRoute>
         } />
 
-        {/* Catch-all: Redirect to root (which will redirect to login or dashboard) */}
+        {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
@@ -133,4 +145,4 @@ function App() {
   )
 }
 
-export default App
+export default App;
