@@ -8,6 +8,9 @@ import storeRouter from "./routes/storeRoutes.js";
 import walletRouter from "./routes/walletRoutes.js";
 
 const port = process.env.PORT || 8000;
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',') 
+    : ['http://localhost:5173'];
 
 const app = express();
 
@@ -15,9 +18,19 @@ app.use(express.json());
 
 app.use(
     cors({
-        origin: "*",
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or Postman)
+            if (!origin) return callback(null, true);
+            
+            if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
         allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true,
     })
 );
 
