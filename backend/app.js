@@ -12,8 +12,6 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 
 const app = express();
 
-app.use(express.json());
-
 app.use(
     cors({
         origin: (origin, callback) => {
@@ -24,17 +22,17 @@ app.use(
                 origin.startsWith(allowedOrigin)
             );
 
-            if (allowed) {
-                return callback(null, true);
-            }
-
             callback(null, allowed);
         },
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
         credentials: true,
     })
 );
+
+// app.options("/*", cors());
+
+app.use(express.json());
 
 app.get("/", (req, res) => {
     return res.send("API is running...");
