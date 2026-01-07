@@ -238,7 +238,7 @@ const EditStoreItems = () => {
 
             if (response.data?.success) {
                 alert("Items saved successfully!");
-                navigate('/vendor-dashboard');
+                navigate(-1);
             } else {
                 alert(response.data?.message || "Failed to add items");
             }

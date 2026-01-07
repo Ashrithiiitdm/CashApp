@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react"; // ✅ 1. Import useState
 import { useNavigate } from "react-router-dom";
 import useTransactionStore from "../store/useTransactionStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -12,6 +12,7 @@ import {
 } from "../components/Icons";
 
 import { StoreIconDisplay } from "../components/StoreIcons";
+import ReceiptModal from '../components/ReceiptModal';
 
 // --- Helper: Format Date Header ---
 const formatDateHeader = (dateString) => {
@@ -20,15 +21,12 @@ const formatDateHeader = (dateString) => {
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
 
-    // Check if it matches Today
     if (date.toDateString() === today.toDateString()) {
         return "Today";
     }
-    // Check if it matches Yesterday
     if (date.toDateString() === yesterday.toDateString()) {
         return "Yesterday";
     }
-    // Otherwise return formatted date (e.g., "January 2, 2026")
     return date.toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
@@ -38,6 +36,9 @@ const formatDateHeader = (dateString) => {
 
 const RecentTransactions = () => {
     const navigate = useNavigate();
+    // ✅ 2. Add state to track the selected transaction for the receipt
+    const [selectedTxn, setSelectedTxn] = useState(null);
+
     const {
         transactions,
         searchQuery,
@@ -48,19 +49,15 @@ const RecentTransactions = () => {
     } = useTransactionStore();
     const { token } = useAuthStore();
 
-    // Fetch transactions on mount (no search)
     useEffect(() => {
         fetchTransactions("", token);
     }, []);
 
-    // --- Logic: Group transactions by date ---
     const groupedTransactions = useMemo(() => {
-        // Sort by Date (Newest First)
         const sorted = transactions.sort(
             (a, b) => new Date(b.date) - new Date(a.date)
         );
 
-        // Group by Date Key
         const groups = sorted.reduce((acc, txn) => {
             const dateKey = new Date(txn.date).toDateString();
             if (!acc[dateKey]) {
@@ -118,7 +115,6 @@ const RecentTransactions = () => {
                 {/* --- List Section --- */}
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
                     {isLoading ? (
-                        // Loading State
                         <div className="flex flex-col items-center justify-center h-full py-20">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
                             <p className="text-gray-400 text-sm">
@@ -126,21 +122,10 @@ const RecentTransactions = () => {
                             </p>
                         </div>
                     ) : error ? (
-                        // Error State
                         <div className="flex flex-col items-center justify-center h-full py-20">
                             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                                <svg
-                                    className="w-10 h-10 text-red-500"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    ></path>
+                                <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -151,23 +136,24 @@ const RecentTransactions = () => {
                             </p>
                         </div>
                     ) : hasResults ? (
-                        // Iterate over the Groups (Dates)
                         Object.entries(groupedTransactions).map(
                             ([dateKey, txns]) => (
                                 <div key={dateKey}>
-                                    {/* Dynamic Date Header */}
                                     <h3 className="text-gray-500 text-xs font-semibold mb-3 ml-1 uppercase tracking-wide">
                                         {formatDateHeader(dateKey)}
                                     </h3>
 
-                                    {/* List of Transactions for this Date */}
                                     <div className="space-y-3">
                                         {txns.map((txn) => (
                                             <div
                                                 key={txn.id}
+                                                onClick={() => {
+                                                    if (txn.isStore) {
+                                                        setSelectedTxn(txn);
+                                                    }
+                                                }}
                                                 className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
                                             >
-                                                {/* Left: Avatar + Details */}
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-100 shrink-0">
                                                         {txn.isStore ? (
@@ -197,7 +183,6 @@ const RecentTransactions = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Right: Amount */}
                                                 <div className="flex items-center gap-2">
                                                     {txn.type === "debit" && (
                                                         <ReceiptIcon className="w-5 h-5 text-blue-400" />
@@ -221,21 +206,10 @@ const RecentTransactions = () => {
                             )
                         )
                     ) : (
-                        // --- Empty State ---
                         <div className="flex flex-col items-center justify-center h-full py-20">
                             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                                <svg
-                                    className="w-10 h-10 text-red-500"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    ></path>
+                                <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -248,6 +222,15 @@ const RecentTransactions = () => {
                         </div>
                     )}
                 </div>
+
+                {/* ✅ 4. Render Receipt Modal */}
+                {selectedTxn && (
+                    <ReceiptModal
+                        transaction={selectedTxn}
+                        onClose={() => setSelectedTxn(null)}
+                    />
+                )}
+
             </div>
         </div>
     );

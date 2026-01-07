@@ -21,6 +21,7 @@ import MyStores from './pages/vendor/MyStores.jsx';
 
 // --- Components ---
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import ViewStore from './pages/vendor/ViewStore.jsx';
 
 // --- Helper Component: Dashboard Resolver ---
 // This decides whether to show the User Home or Vendor Dashboard
@@ -115,6 +116,12 @@ function App() {
         <Route path="/vendor/edit-items" element={
             <ProtectedRoute allowedRoles={['vendor']}>
                 <EditStoreItems />
+            </ProtectedRoute>
+        } />
+
+        <Route path="/vendor/view-store" element={
+            <ProtectedRoute allowedRoles={['vendor']}>
+                <ViewStore />
             </ProtectedRoute>
         } />
 

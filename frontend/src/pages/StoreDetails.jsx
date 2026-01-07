@@ -20,16 +20,6 @@ const StoreDetails = () => {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [expandedCategory, setExpandedCategory] = useState(null);
 
-    useEffect(() => {
-        // 1. Fetch all stores when page loads
-        searchStores("");
-
-        // 2. Cleanup function: Runs when you LEAVE the page
-        return () => {
-            setSearchQuery(""); // Wipes the search query from the global store
-        };
-    }, []);
-
     // Fetch store details on mount
     useEffect(() => {
         if (storeId) {

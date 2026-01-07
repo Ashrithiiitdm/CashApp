@@ -15,6 +15,34 @@ const useMerchantStore = create(
             // Actions
             setSearchQuery: (query) => set({ searchQuery: query }),
 
+            updateStoreInList: (storeId, updatedFields) => {
+                set((state) => ({
+                    // 1. Update the specific store in the 'stores' array
+                    stores: state.stores.map((store) =>
+                        (store.store_id === storeId || store.id === storeId)
+                            ? { 
+                                ...store, 
+                                ...updatedFields, 
+                                // Ensure standard fields are updated
+                                display_name: updatedFields.name || store.display_name,
+                                location_text: updatedFields.address || store.location_text, 
+                                address: updatedFields.address || store.address
+                              }
+                            : store
+                    ),
+                    
+                    // 2. Update 'currentStore' if it matches the edited store
+                    currentStore: (state.currentStore?.store_id === storeId || state.currentStore?.id === storeId)
+                        ? { 
+                            ...state.currentStore, 
+                            ...updatedFields,
+                            display_name: updatedFields.name || state.currentStore.display_name,
+                            address: updatedFields.address || state.currentStore.address
+                          }
+                        : state.currentStore
+                }));
+            },
+
             // Search stores API call
             searchStores: async (query = "") => {
                 set({ loading: true, error: null });
@@ -78,6 +106,7 @@ const useMerchantStore = create(
             // Clear current store
             clearCurrentStore: () => set({ currentStore: null }),
         }),
+        
         {
             name: "merchant-storage",
             storage: createJSONStorage(() => localStorage),

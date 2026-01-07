@@ -45,12 +45,12 @@ const MoneyTransfer = () => {
     // --- API Handlers (Existing) ---
     const handleStorePay = async (idempotencyKey) => {
         const response = await axios.post(
-            `/api/users/pay-store`,
+            `/api/users/pay-store`, // Ensure this endpoint matches your backend route
             {
                 store_id: contact.store_id || contact.id,
                 amount_paise: Math.round(parseFloat(amount) * 100),
                 idempotency_key: idempotencyKey,
-                metadata: cartItems ? { items: cartItems } : {},
+                cartItems: cartItems || [] 
             },
             { headers: { Authorization: `Bearer ${token}` } }
         );
