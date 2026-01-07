@@ -6,8 +6,9 @@ import {
     SearchIcon,
     FilterIcon,
     DropdownIcon,
-    SearchStoresIcon,
 } from "../components/Icons";
+
+import { StoreIconDisplay } from "../components/StoreIcons";
 
 const SearchStores = () => {
     const navigate = useNavigate();
@@ -17,7 +18,13 @@ const SearchStores = () => {
 
     // Fetch all stores on mount
     useEffect(() => {
+        // 1. Fetch all stores when page loads
         searchStores("");
+
+        // 2. Cleanup function: Runs when you LEAVE the page
+        return () => {
+            setSearchQuery(""); // Wipes the search query from the global store
+        };
     }, []);
 
     console.log("Stores", stores);
@@ -96,8 +103,13 @@ const SearchStores = () => {
                             >
                                 {/* Avatar / Store Icon */}
                                 <div className="mr-4 flex-shrink-0">
-                                    <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center border border-orange-100">
-                                        <SearchStoresIcon className="w-7 h-7 text-orange-500" />
+                                    <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden border border-blue-100 p-2">
+                                        <StoreIconDisplay 
+                                            // Backend usually returns 'store_logo' or 'icon_id'. 
+                                            // Passing both ensures it works regardless of exact DB column name.
+                                            iconId={store.store_logo || store.icon_id} 
+                                            className="w-full h-full object-contain" 
+                                        />
                                     </div>
                                 </div>
 

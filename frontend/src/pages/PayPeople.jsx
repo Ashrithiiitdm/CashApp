@@ -6,10 +6,11 @@ import {
   SearchIcon, 
   ArrowBackIcon, 
   UserNameIcon, 
-  SearchStoresIcon,
   FilterIcon, 
   DropdownIcon
 } from '../components/Icons'; // Adjust path if needed
+
+import { StoreIconDisplay } from '../components/StoreIcons';
 
 const PayPeoplePage = () => {
   const navigate = useNavigate();
@@ -29,6 +30,10 @@ const PayPeoplePage = () => {
     isLoading,
     error
   } = useContactStore();
+
+  useEffect(() => {
+    setSearchQuery(""); // Clear search text immediately when page loads
+  }, []);
 
   // 2. Fetch recent contacts on mount
   useEffect(() => {
@@ -125,8 +130,12 @@ const PayPeoplePage = () => {
                       <img src={contact.avatar} alt={contact.name} className="w-full h-full object-cover" />
                     </div>
                   ) : contact.type === 'store' ? (
-                    <div className="flex items-center justify-center">
-                        <SearchStoresIcon />
+                    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden border border-blue-100 p-2">
+                        <StoreIconDisplay 
+                            // Try multiple fields in case backend naming varies
+                            iconId={contact.store_logo || contact.icon_id} 
+                            className="w-full h-full object-contain" 
+                        />
                     </div>
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-100">

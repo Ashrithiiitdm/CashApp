@@ -32,7 +32,21 @@ const useTransactionStore = create((set) => ({
             if (response.data.success) {
                 // Transform backend data to frontend format
                 const transformedTransactions =
-                    response.data.recent_transactions.map((txn) => ({
+                    response.data.recent_transactions.map((txn) => {
+                        
+                        let description = "Paid to"; // Default
+
+                        if (txn.transaction_type === 'WITHDRAW') {
+                            description = "from wallet"; // Fixes the issue
+                        } else if (txn.transaction_type === 'ADD_MONEY') {
+                            description = "to wallet";
+                        } else if (txn.store_name) {
+                            description = "Paid to store";
+                        } else if (txn.transaction_kind === 'credit') {
+                            description = "Received from";
+                        }
+
+                        return {
                         id: txn.transaction_id,
                         name: txn.peer_name || txn.store_name || "Unknown",
                         type: txn.transaction_kind,
@@ -42,9 +56,12 @@ const useTransactionStore = create((set) => ({
                             ? "from wallet"
                             : "to wallet",
                         avatar: null,
+                        description: description,
+                        store_logo: txn.store_logo || "store_1",
                         isStore: !!txn.store_id,
                         raw: txn,
-                    }));
+                    };
+            });
 
                 set({
                     transactions: transformedTransactions,

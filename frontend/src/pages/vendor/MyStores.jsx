@@ -119,11 +119,10 @@ const MyStores = () => {
                         storeDetails: {
                             name: store.name,
                             address: store.address,
-                            logoId: store.icon_id // Make sure this matches backend column
+                            logoId: store.icon_id, // Make sure this matches backend column
+                            storeId: store.id
                         },
-                        // In a real app, you might fetch items inside EditPage based on storeID
-                        // For now we pass empty items or fetch them there
-                        initialItems: [] 
+                        initialItems: store.items || [] // Pass existing items if available 
                     } 
                 })}
                 className="flex items-center p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"

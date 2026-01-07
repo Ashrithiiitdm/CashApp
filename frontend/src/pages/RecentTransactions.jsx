@@ -7,10 +7,11 @@ import {
     SearchIcon,
     FilterIcon,
     DropdownIcon,
-    SearchStoresIcon,
     UserNameIcon,
     ReceiptIcon,
 } from "../components/Icons";
+
+import { StoreIconDisplay } from "../components/StoreIcons";
 
 // --- Helper: Format Date Header ---
 const formatDateHeader = (dateString) => {
@@ -80,7 +81,10 @@ const RecentTransactions = () => {
                 {/* --- Header Section --- */}
                 <div className="bg-white pt-8 pb-4 px-6 shadow-sm z-10 rounded-b-3xl">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => {
+                            setSearchQuery("");
+                            navigate(-1);
+                        }}
                         className="mb-5 hover:opacity-70 transition-opacity"
                     >
                         <ArrowBackIcon className="w-6 h-6 text-gray-700" />
@@ -167,7 +171,12 @@ const RecentTransactions = () => {
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-100 shrink-0">
                                                         {txn.isStore ? (
-                                                            <SearchStoresIcon className="w-6 h-6 text-gray-700" />
+                                                            <div className="w-full h-full p-1.5 flex items-center justify-center bg-blue-50">
+                                                                <StoreIconDisplay
+                                                                    iconId={txn.store_logo}
+                                                                    className="w-full h-full object-contain"
+                                                                />
+                                                            </div>
                                                         ) : txn.avatar ? (
                                                             <img
                                                                 src={txn.avatar}
