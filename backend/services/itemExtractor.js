@@ -1,10 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import Tesseract from "tesseract.js";
-import { createRequire } from "module";
 import sharp from "sharp";
-
-const require = createRequire(import.meta.url);
-const pdf = require("pdf-parse");
 
 // ---------------- CONFIGURATION ----------------
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
@@ -64,70 +59,12 @@ async function processImage(fileBuffer) {
             },
         ]);
 
-        const response = await result.response;
+        const response = result.response;
         const text = response.text();
 
         return parseJSON(text);
     } catch (error) {
         console.error("❌ Image processing failed:", error);
-        throw error;
-    }
-}
-
-// ---------------- PDF PROCESSING ----------------
-async function processPDF(fileBuffer) {
-    try {
-        console.log("📋 Processing PDF...");
-
-        const data = await pdf(fileBuffer);
-
-        let text = data.text;
-        console.log(`📄 Extracted ${text.length} characters from PDF`);
-
-        // If very little text, PDF might be scanned - use OCR
-        if (text.length < 100) {
-            console.log("⚠️  Scanned PDF detected, using OCR...");
-            text = await performOCR(fileBuffer);
-        }
-
-        // Use Gemini to analyze text
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-        const result = await model.generateContent([
-            `${SYSTEM_PROMPT}\n\nDocument Content:\n${text}`,
-        ]);
-
-        const response = await result.response;
-        const responseText = response.text();
-
-        return parseJSON(responseText);
-    } catch (error) {
-        console.error("❌ PDF processing failed:", error);
-        throw error;
-    }
-}
-
-// ---------------- OCR FALLBACK ----------------
-async function performOCR(fileBuffer) {
-    try {
-        console.log("🔍 Performing OCR...");
-
-        const {
-            data: { text },
-        } = await Tesseract.recognize(fileBuffer, "eng", {
-            logger: (m) => {
-                if (m.status === "recognizing text") {
-                    console.log(
-                        `   Progress: ${Math.round(m.progress * 100)}%`
-                    );
-                }
-            },
-        });
-
-        console.log(`✅ OCR completed, extracted ${text.length} characters`);
-        return text;
-    } catch (error) {
-        console.error("❌ OCR failed:", error);
         throw error;
     }
 }
@@ -211,8 +148,6 @@ export async function extractItemsFromFile(
         // Determine file type and process accordingly
         if (mimeType.startsWith("image/")) {
             extractedData = await processImage(fileBuffer);
-        } else if (mimeType === "application/pdf") {
-            extractedData = await processPDF(fileBuffer);
         } else {
             throw new Error(`Unsupported file type: ${mimeType}`);
         }

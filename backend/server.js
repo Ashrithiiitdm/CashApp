@@ -1,30 +1,8 @@
-import express from "express";
 import "dotenv/config";
-import cors from "cors";
 import pool from "./db.js";
-import userRouter from "./routes/userRoutes.js";
-import qrRouter from "./routes/qrRoutes.js";
-import storeRouter from "./routes/storeRoutes.js";
-import walletRouter from "./routes/walletRoutes.js";
+import app from "./app.js";
 
 const port = process.env.PORT || 8000;
-
-const app = express();
-
-app.use(express.json());
-
-app.use(
-    cors({
-        origin: "*",
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-    })
-);
-
-app.use("/api/users", userRouter);
-app.use("/api/qr", qrRouter);
-app.use("/api/stores", storeRouter);
-app.use("/api/wallet", walletRouter);
 
 async function startServer() {
     try {
