@@ -240,7 +240,11 @@ const EditStoreItems = () => {
 
             if (response.data?.success) {
                 toast.success("Items saved successfully!", { id: toastId }); // ✅ Success Toast
-                navigate(-1);
+                navigate('/vendor/view-store', { 
+                    state: { 
+                        storeDetails: storeDetails 
+                    } 
+                });
             } else {
                 toast.error(response.data?.message || "Failed to add items", { id: toastId }); // ✅ Error Toast
             }

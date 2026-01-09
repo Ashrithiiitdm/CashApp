@@ -70,7 +70,7 @@ const MyStores = () => {
 
           {/* Back Button */}
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/vendor-dashboard")}
             className="mb-5 hover:opacity-70 transition-opacity p-2 -ml-2 rounded-full hover:bg-gray-50"
           >
             <ArrowBackIcon className="text-gray-700" />

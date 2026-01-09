@@ -96,7 +96,7 @@ const ViewStore = () => {
           {/* Header Back Button */}
           <div className="pt-8 px-6 pb-2">
              <button 
-                onClick={() => navigate(-1)} 
+                onClick={() => navigate('/vendor/my-stores')} 
                 className="hover:bg-gray-100 p-2 -ml-2 rounded-full transition-colors"
              >
                 <ArrowBackIcon className="text-gray-800 w-6 h-6"/>
