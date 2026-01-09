@@ -4,12 +4,12 @@ import { useAuthStore } from "../store/useAuthStore";
 import useCartStore from "../store/useCartStore";
 import axios from "../config/axiosConfig";
 import { v4 as uuidv4 } from "uuid";
-import toast from "react-hot-toast"; // ✅ Import Toast
+import toast from "react-hot-toast";
 import { StripeCheckout } from "../components/StripeCheckout";
+import { StoreIconDisplay } from "../components/StoreIcons"; // ✅ Imported StoreIconDisplay
 import {
   ArrowBackIcon,
   UserNameIcon,
-  SearchStoresIcon,
   WalletIcon,
   WithdrawIcon,
 } from "../components/Icons";
@@ -23,7 +23,6 @@ const MoneyTransfer = () => {
   const isPaymentFlow = location.state?.isPaymentFlow;
   const cartItems = location.state?.cartItems;
 
-  // ✅ Use 'wallet' (balance) and 'setBalance' from store
   const { wallet, setBalance, token } = useAuthStore();
   const { clearCart } = useCartStore();
 
@@ -72,7 +71,7 @@ const MoneyTransfer = () => {
 
   const processAddMoney = async (value) => {
     setShowStripeCheckout(true);
-    return null; 
+    return null;
   };
 
   const handleStripeSuccess = async (result) => {
@@ -111,7 +110,6 @@ const MoneyTransfer = () => {
       );
 
       if (response.data.success) {
-        // ✅ Updated: setBalance
         setBalance(response.data.newBalance / 100);
 
         return {
@@ -144,7 +142,6 @@ const MoneyTransfer = () => {
 
     try {
       setIsLoading(true);
-      // Removed local error state clearing since using toast
 
       const idempotencyKey = uuidv4();
       let result = null;
@@ -166,7 +163,6 @@ const MoneyTransfer = () => {
         return;
       }
 
-      // ✅ Updated: setBalance for standard transfers
       if (typeof result.wallet_balance_paise === "number") {
         setBalance(result.wallet_balance_paise / 100);
       }
@@ -207,16 +203,30 @@ const MoneyTransfer = () => {
     return "Pay Now";
   };
 
+  // ✅ Updated to use StoreIconDisplay
   const getIcon = () => {
-    if (isAddMoney) return <WalletIcon className="text-blue-500" />;
-    if (isWithdraw) return <WithdrawIcon className="text-blue-500" />;
-    return contact.type === "store" ? <SearchStoresIcon /> : <UserNameIcon />;
+    if (isAddMoney) return <WalletIcon className="text-blue-500 w-8 h-8" />;
+    if (isWithdraw) return <WithdrawIcon className="text-blue-500 w-8 h-8" />;
+
+    if (contact.type === "store") {
+      // Passes icon_id if available, otherwise StoreIconDisplay handles default
+      return <div className="flex-shrink-0">
+        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden border border-blue-100 p-2">
+          <StoreIconDisplay
+            iconId={contact.icon_id}
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>;
+    }
+
+    return <UserNameIcon className="w-full h-full text-gray-400 p-2" />;
   };
 
   return (
     <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 font-sans">
       <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
-        
+
         {/* Header */}
         <div className="bg-white pt-8 pb-6 px-6 shadow-sm z-10 flex flex-col items-center relative">
           <button
@@ -250,7 +260,7 @@ const MoneyTransfer = () => {
 
         {/* Content */}
         <div className="flex flex-col items-center justify-center px-8 py-6 space-y-8">
-          
+
           {showStripeCheckout && isAddMoney && (
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in zoom-in-95">
               <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">

@@ -20,6 +20,7 @@ import GroceryStoreImage from '../assets/icons/grocery-store.png';
 import addImage from '../assets/icons/add.png';
 import trashImage from '../assets/icons/trash.png';
 import editImage from '../assets/icons/edit.png';
+import whiteLogoImage from '../assets/icons/white-qr-code.png';
 
 const ActionIconWrapper = ({ children }) => (
   <div className="w-12 h-12 bg-[#1c86c8] rounded-full flex items-center justify-center shadow-md">
@@ -33,6 +34,17 @@ export const WalletIcon = () => (
     alt="Wallet Icon" 
     className='w-7 h-7'
   />
+);
+
+export const WhiteQRCodeIcon = () => (
+  <ActionIconWrapper>
+    <img 
+    src={whiteLogoImage}
+    alt="White QR Code Icon"
+    className='w-7 h-7'
+  />
+  </ActionIconWrapper>
+  
 );
 
 export const CheckBalanceIcon = () => (

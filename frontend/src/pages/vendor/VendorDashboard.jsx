@@ -5,44 +5,51 @@ import {
   LogoIcon,
   WalletIcon,
   SearchIcon,
-  CheckBalanceIcon,
+  WhiteQRCodeIcon,
   WithdrawIcon,
   RecentIcon,
   SearchStoresIcon, 
 } from '../../components/Icons';
-import axios from 'axios';
+import axios from '../../config/axiosConfig'; 
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
   const { user, token, logout, wallet, setBalance } = useAuthStore();
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ FETCH ONCE ON MOUNT (With Cache Busting)
   useEffect(() => {
-    const fetchLatestBalance = async () => {
-      if (!token) return;
-      
-      setIsRefreshing(true);
+    if (!token) return;
+
+    const fetchFreshBalance = async () => {
+      // Only show loading spinner if we have NO balance at all (first login)
+      // Otherwise, update silently in the background
+      if (wallet === null || wallet === undefined) setIsLoading(true);
+
       try {
-        const response = await axios.get("/api/users/wallet-balance", {
-    headers: { Authorization: `Bearer ${token}` },
-});
+        // 🚀 KEY FIX: Add '?_t=' + Date.now()
+        // This makes every request unique, forcing the server to send new data.
+        const response = await axios.get(`/api/users/wallet-balance?_t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         if (response.data.success) {
-          // ✅ UPDATE GLOBAL STORE
-          // This immediately updates the balance everywhere in the app
-          console.log("Fetched latest balance:", response.data.balance);
-          setBalance(Number(response.data.balance));
+          const newBalance = Number(response.data.balance);
+          console.log("💰 Fresh Balance Fetched:", newBalance);
+          setBalance(newBalance);
         }
       } catch (error) {
-        console.error("Failed to update balance:", error);
+        console.error("Failed to fetch balance:", error);
       } finally {
-        setIsRefreshing(false);
+        setIsLoading(false);
       }
     };
 
-    fetchLatestBalance();
-  }, [token, setBalance]);
+    fetchFreshBalance();
+    
+    // Empty dependency array = Runs ONLY when component mounts (page load/visit)
+  }, [token, setBalance]); 
 
   const handleLogout = () => {
     if (logout) logout();
@@ -52,13 +59,14 @@ const VendorDashboard = () => {
   // Vendor Specific Actions
   const actions = [
     { 
-      label: 'Check Balance', 
-      icon: <CheckBalanceIcon />, // Using standard icon like Home.js
-      onClick: () => navigate('/vendor/check-balance') 
+      label: 'Receive Payment', 
+      icon: (
+         <WhiteQRCodeIcon />
+      ),
+      onClick: () => navigate('/vendor/check-balance')
     },
     { 
       label: 'Add Store', 
-      // Custom Icon for Add Store (Store + Plus)
       icon: (
         <div className="relative">
           <SearchStoresIcon />
@@ -96,28 +104,24 @@ const VendorDashboard = () => {
   };
 
   return (
-    // Outer Container - Matching Home.js (#1581BF)
     <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 overflow-y-auto font-sans">
       
-      {/* Main Card - Matching Home.js Dimensions & Shape */}
       <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
         
         {/* --- Header Section (White) --- */}
         <div className="bg-white pt-10 pb-6 px-8">
           <div className="flex justify-between items-center mb-6">
-            {/* Left Logo */}
             <LogoIcon />
             
-            {/* Right Side: Wallet + Logout Group */}
             <div className="flex items-center gap-3">
-                
-                {/* Balance Pill */}
+                {/* Balance Display */}
                 <div className="flex items-center bg-[#eef7ee] border border-[#dcf0dc] rounded-full px-4 py-1.5">
-                    <span className="text-[#36a736] font-bold mr-2 text-sm">₹ {Number(wallet).toFixed(2)}</span>
+                    <span className="text-[#36a736] font-bold mr-2 text-sm">
+                        {isLoading ? "..." : `₹ ${Number(wallet || 0).toFixed(2)}`}
+                    </span>
                     <WalletIcon />
                 </div>
 
-                {/* Logout Button */}
                 <button 
                     onClick={handleLogout} 
                     className="p-2 bg-red-50 hover:bg-red-100 rounded-full border border-red-100 transition-colors group"
@@ -132,7 +136,6 @@ const VendorDashboard = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
           <div 
              onClick={() => goToMyStores(true)} 
              className="relative w-full cursor-pointer"
@@ -140,7 +143,7 @@ const VendorDashboard = () => {
             <input
               type="text"
               placeholder="Search My stores"
-              readOnly // Prevents typing here, forces redirect
+              readOnly
               className="w-full py-3.5 pl-12 pr-4 rounded-full bg-white border border-gray-200 shadow-sm outline-none text-gray-700 text-md placeholder-gray-400 focus:border-blue-400 transition-all cursor-pointer"
             />
             <div className="absolute left-4 top-1/2 -translate-y-1/2">
@@ -149,9 +152,8 @@ const VendorDashboard = () => {
           </div>
         </div>
 
-        {/* --- HERO SECTION (Dark Blue) --- */}
-        <div onClick={() => navigate('/vendor/my-stores')} className="bg-[#065d94] flex flex-col items-center justify-center py-8 relative text-white">
-            {/* Big Store Icon */}
+        {/* --- HERO SECTION --- */}
+        <div onClick={() => navigate('/vendor/my-stores')} className="bg-[#065d94] flex flex-col items-center justify-center py-8 relative text-white cursor-pointer hover:bg-[#054a75] transition-colors">
             <div className="mb-4">
                <svg width="100" height="100" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="0">
                   <path fill="none" d="M0 0h24v24H0z"></path>
@@ -161,7 +163,7 @@ const VendorDashboard = () => {
             <h2 className="text-3xl font-bold tracking-wide">My Stores</h2>
         </div>
 
-        {/* --- Footer Action Grid (White/Gray) --- */}
+        {/* --- Footer Action Grid --- */}
         <div className="bg-[#f8f9fd] px-6 py-8 flex-1">
             <div className="grid grid-cols-3 gap-y-8 gap-x-4">
                 {actions.map((item, index) => (
