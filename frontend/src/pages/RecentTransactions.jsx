@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; 
 import useTransactionStore from "../store/useTransactionStore";
 import { useAuthStore } from "../store/useAuthStore";
 import {
@@ -8,13 +8,12 @@ import {
     FilterIcon,
     DropdownIcon,
     UserNameIcon,
-    ReceiptIcon, // ✅ Ensure this is imported
+    ReceiptIcon,
 } from "../components/Icons";
 
 import { StoreIconDisplay } from "../components/StoreIcons";
 import ReceiptModal from '../components/ReceiptModal';
 
-// ... (Keep formatDateHeader helper as is) ...
 const formatDateHeader = (dateString) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -28,7 +27,11 @@ const formatDateHeader = (dateString) => {
 
 const RecentTransactions = () => {
     const navigate = useNavigate();
+    const location = useLocation(); // ✅ Hook to access state
     const [selectedTxn, setSelectedTxn] = useState(null);
+
+    // Check if we came from ViewStore with a pre-filled search term
+    const initialSearchTerm = location.state?.initialSearch || "";
 
     const {
         transactions,
@@ -41,8 +44,20 @@ const RecentTransactions = () => {
     const { token } = useAuthStore();
 
     useEffect(() => {
+        // Fetch all transactions first
         fetchTransactions("", token);
-    }, []);
+        
+        // ✅ If there's an initial search term (e.g. Store Name), set it immediately
+        if (initialSearchTerm) {
+            setSearchQuery(initialSearchTerm);
+        } else {
+            // Reset if no initial search (so we don't keep old searches)
+            setSearchQuery(""); 
+        }
+        
+        // We only want to run this setup once on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); 
 
     const groupedTransactions = useMemo(() => {
         const sorted = transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -59,11 +74,12 @@ const RecentTransactions = () => {
     return (
         <div className="min-h-screen w-full bg-[#1581BF] flex items-center justify-center p-4 font-sans">
             <div className="bg-[#f8f9fd] w-11/12 max-w-[420px] min-h-[750px] rounded-[40px] shadow-2xl relative flex flex-col overflow-hidden">
-                {/* ... (Header Section stays the same) ... */}
+                
+                {/* Header */}
                 <div className="bg-white pt-8 pb-4 px-6 shadow-sm z-10 rounded-b-3xl">
                     <button
                         onClick={() => {
-                            setSearchQuery("");
+                            setSearchQuery(""); // Clear filter on exit
                             navigate(-1);
                         }}
                         className="mb-5 hover:opacity-70 transition-opacity"
@@ -76,7 +92,8 @@ const RecentTransactions = () => {
                             type="text"
                             placeholder="Search transactions ..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value, token)}
+                            // Pass token to search action if your store requires it for backend search
+                            onChange={(e) => setSearchQuery(e.target.value, token)} 
                             className="w-full py-3.5 pl-12 pr-4 rounded-full bg-white border border-gray-200 shadow-sm outline-none text-gray-700 text-md placeholder-gray-400 focus:border-blue-400 transition-all"
                         />
                         <div className="absolute left-4 top-1/2 -translate-y-1/2">
@@ -85,7 +102,9 @@ const RecentTransactions = () => {
                     </div>
 
                     <div className="flex justify-between items-center px-1">
-                        <h2 className="text-lg font-bold text-gray-900">All Transactions</h2>
+                        <h2 className="text-lg font-bold text-gray-900">
+                            {initialSearchTerm ? `History: ${initialSearchTerm}` : "All Transactions"}
+                        </h2>
                         <button className="flex items-center gap-1 text-gray-500 text-sm font-medium hover:text-gray-700">
                             <FilterIcon className="w-4 h-4 text-blue-500" />
                             <span>Filter</span>
@@ -94,7 +113,7 @@ const RecentTransactions = () => {
                     </div>
                 </div>
 
-                {/* --- List Section --- */}
+                {/* List Section */}
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center h-full py-20">
@@ -103,9 +122,7 @@ const RecentTransactions = () => {
                         </div>
                     ) : error ? (
                         <div className="flex flex-col items-center justify-center h-full py-20">
-                            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                                {/* Error Icon SVG */}
-                            </div>
+                            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-sm"></div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">Error Loading</h3>
                             <p className="text-gray-400 text-center text-xs max-w-[250px] leading-relaxed">{error}</p>
                         </div>
@@ -120,7 +137,6 @@ const RecentTransactions = () => {
                                     {txns.map((txn) => (
                                         <div
                                             key={txn.id}
-                                            // Clicking the row opens receipt if it's a store
                                             onClick={() => {
                                                 if (txn.isStore) setSelectedTxn(txn);
                                             }}
@@ -146,24 +162,19 @@ const RecentTransactions = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Right Side: Receipt Icon & Amount */}
+                                            {/* Right Side */}
                                             <div className="flex items-center gap-3">
-                                                
-                                                {/* ✅ 1. SHOW RECEIPT ICON ONLY FOR STORES */}
                                                 {txn.isStore && (
                                                     <button 
                                                         onClick={(e) => {
-                                                            e.stopPropagation(); // Don't trigger the row click twice
+                                                            e.stopPropagation();
                                                             setSelectedTxn(txn);
                                                         }}
                                                         className="p-1.5 rounded-full hover:bg-gray-100 transition-colors group"
-                                                        title="View Receipt"
                                                     >
-                                                        {/* Icon is gray by default, blue on hover */}
                                                         <ReceiptIcon className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
                                                     </button>
                                                 )}
-
                                                 <span className={`text-sm font-bold ${txn.type === "credit" ? "text-[#36a736]" : "text-gray-900"}`}>
                                                     {txn.type === "credit" ? "+" : ""} ₹{Number(txn.amount).toFixed(2)}
                                                 </span>
@@ -175,13 +186,11 @@ const RecentTransactions = () => {
                         ))
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full py-20">
-                            {/* Empty State */}
                              <h3 className="text-xl font-bold text-gray-900 mb-2">No results were found</h3>
                         </div>
                     )}
                 </div>
 
-                {/* Receipt Modal */}
                 {selectedTxn && (
                     <ReceiptModal
                         transaction={selectedTxn}
