@@ -43,6 +43,32 @@ const useMerchantStore = create(
                 }));
             },
 
+            fetchStores: async (token) => {
+                set({ loading: true, error: null });
+                try {
+                    const response = await axios.get("/api/stores", {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+
+                    if (response.data.success) {
+                        set({ stores: response.data.stores, loading: false });
+                    } else {
+                        set({
+                            stores: [],
+                            error: "Failed to load stores",
+                            loading: false,
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error fetching merchant stores:", error);
+                    set({
+                        error: error.response?.data?.message || "Failed to load stores",
+                        loading: false,
+                        stores: [], // Clear stores on error to prevent showing stale data
+                    });
+                }
+            },
+
             // Search stores API call
             searchStores: async (query = "") => {
                 set({ loading: true, error: null });

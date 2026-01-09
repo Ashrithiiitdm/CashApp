@@ -10,7 +10,7 @@ export const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      wallet: null,
+      wallet: 0,
 
       // Actions
       login: (userData, token) =>
@@ -19,7 +19,6 @@ export const useAuthStore = create(
           token: token,
           isAuthenticated: true,
           error: null,
-          // Convert from paise to rupees
           wallet: userData.wallet_balance ? userData.wallet_balance / 100 : 0,
         }),
 
@@ -29,12 +28,16 @@ export const useAuthStore = create(
           token: null,
           isAuthenticated: false,
           error: null,
-          wallet: null,
+          wallet: 0,
         }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
-      setWallet: (newBalance) => set({ wallet: newBalance }),
+      setBalance: (newBalance) => 
+        set((state) => ({
+          wallet: newBalance,
+          user: state.user ? { ...state.user, balance: newBalance } : state.user
+        })),
 
       setError: (error) => set({ error: error }),
     }),

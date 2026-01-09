@@ -739,3 +739,41 @@ export const userToStore = async (req, res) => {
         client.release();
     }
 };
+
+// backend/controllers/userController.js
+
+export const getWalletBalance = async (req, res) => {
+    try {
+        const user_id = req.user_id; // From auth middleware
+
+        // Query your wallet table. 
+        // Note: Based on your login code, your table is 'wallet_accounts' and column is 'balance_cached'
+        // If you renamed it to 'wallets' and 'balance', adjust the query below accordingly.
+        const result = await pool.query(
+            "SELECT balance_cached FROM wallet_accounts WHERE user_id = $1",
+            [user_id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Wallet not found" });
+        }
+
+        // Convert to Rupees (assuming stored in Paise) or just return number
+        // Adjust logic if your DB stores raw Rupees
+        const balanceRaw = Number(result.rows[0].balance_cached);
+        const balanceRupees = balanceRaw / 100; // Remove this division if DB stores Rupees directly
+
+        return res.status(200).json({
+            success: true,
+            balance: balanceRupees, 
+            currency: "INR"
+        });
+
+    } catch (err) {
+        console.error("Error fetching balance:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server error fetching balance"
+        });
+    }
+};

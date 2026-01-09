@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -10,10 +10,39 @@ import {
   RecentIcon,
   SearchStoresIcon, 
 } from '../../components/Icons';
+import axios from 'axios';
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
-  const { wallet, logout } = useAuthStore();
+  const { user, token, logout, wallet, setBalance } = useAuthStore();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    const fetchLatestBalance = async () => {
+      if (!token) return;
+      
+      setIsRefreshing(true);
+      try {
+        const response = await axios.get("/api/users/wallet-balance", {
+    headers: { Authorization: `Bearer ${token}` },
+});
+
+        if (response.data.success) {
+          // ✅ UPDATE GLOBAL STORE
+          // This immediately updates the balance everywhere in the app
+          console.log("Fetched latest balance:", response.data.balance);
+          setBalance(Number(response.data.balance));
+        }
+      } catch (error) {
+        console.error("Failed to update balance:", error);
+      } finally {
+        setIsRefreshing(false);
+      }
+    };
+
+    fetchLatestBalance();
+  }, [token, setBalance]);
 
   const handleLogout = () => {
     if (logout) logout();
@@ -25,7 +54,7 @@ const VendorDashboard = () => {
     { 
       label: 'Check Balance', 
       icon: <CheckBalanceIcon />, // Using standard icon like Home.js
-      onClick: () => navigate('/check-balance') 
+      onClick: () => navigate('/vendor/check-balance') 
     },
     { 
       label: 'Add Store', 

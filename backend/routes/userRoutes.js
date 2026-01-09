@@ -7,6 +7,7 @@ import {
     getRecentTransactions,
     searchContacts,
     userToStore,
+    getWalletBalance,
 } from "../controllers/userController.js";
 import { jwtAuth } from "../middleware/auth.js";
 
@@ -16,6 +17,7 @@ const userRouter = Router();
 userRouter.post("/signup", registerUser);
 userRouter.post("/login", loginUser);
 
+userRouter.get('/wallet-balance', jwtAuth, getWalletBalance);
 userRouter.get("/recent-contacts", jwtAuth, getRecentContacts);
 userRouter.get("/search-contacts", jwtAuth, searchContacts);
 userRouter.get("/recent-transactions", jwtAuth, getRecentTransactions);

@@ -56,7 +56,7 @@ const useTransactionStore = create((set) => ({
                             description = "Paid to";
                         }
 
-                        console.log("Transforming transaction:", txn);
+                        // console.log("Transforming transaction:", txn);
 
                         // --- Return Normalized Object ---
                         return {

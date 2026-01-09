@@ -12,12 +12,13 @@ import { auth } from "../config/firebase";
 import axios from "../config/axiosConfig";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
+import toast from "react-hot-toast"; // ✅ Import toast
 
 const Signup = () => {
     const [activeTab, setActiveTab] = useState("User");
     const tabs = ["User", "Vendor", "Employee"];
 
-    const { login, setWallet } = useAuthStore();
+    const { login, setBalance } = useAuthStore(); // Updated to use setBalance
 
     const [formData, setFormData] = useState({
         email: "",
@@ -26,19 +27,15 @@ const Signup = () => {
         confirmPassword: "",
     });
 
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-
     const navigate = useNavigate();
 
     const handleInputChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        setError("");
     };
 
     const onSubmit = async (e) => {
         e.preventDefault();
-        setError("");
 
         // Validation
         if (
@@ -47,21 +44,22 @@ const Signup = () => {
             !formData.password ||
             !formData.confirmPassword
         ) {
-            setError("All fields are required");
+            toast.error("All fields are required"); // ✅ Toast
             return;
         }
 
         if (formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match");
+            toast.error("Passwords do not match"); // ✅ Toast
             return;
         }
 
         if (formData.password.length < 6) {
-            setError("Password must be at least 6 characters");
+            toast.error("Password must be at least 6 characters"); // ✅ Toast
             return;
         }
 
         setLoading(true);
+        const toastId = toast.loading("Creating your account..."); // ✅ Loading Toast
 
         try {
             // Determine role from tab
@@ -97,8 +95,7 @@ const Signup = () => {
             const loginData = loginResponse.data;
 
             if (loginData.success !== true) {
-                setError(loginData.message || "Login after signup failed");
-                return;
+                throw new Error(loginData.message || "Login after signup failed");
             }
 
             const token = loginData.token;
@@ -106,15 +103,23 @@ const Signup = () => {
 
             // Update global auth state
             login(userData, token);
-            setWallet(
-                userData.wallet_balance ? userData.wallet_balance / 100 : 0
+            
+            // ✅ Use setBalance (from updated store)
+            setBalance(
+                userData.balance 
+                ? Number(userData.balance) 
+                : (userData.wallet_balance ? userData.wallet_balance / 100 : 0)
             );
+
+            // ✅ Success Toast
+            toast.success("Account created successfully!", { id: toastId });
 
             // 5. Redirect
             navigate("/");
         } catch (err) {
             console.error(err);
-            setError(err.message || "Failed to register. Please try again.");
+            // ✅ Error Toast
+            toast.error(err.message || "Failed to register. Please try again.", { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -160,12 +165,6 @@ const Signup = () => {
                     onSubmit={onSubmit}
                     className="w-full flex flex-col gap-4 mb-8"
                 >
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                            {error}
-                        </div>
-                    )}
-
                     <InputField
                         type="email"
                         placeholder="Email address"

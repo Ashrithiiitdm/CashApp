@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './store/useAuthStore'; 
+import { useAuthStore } from './store/useAuthStore';
 import { Toaster } from 'react-hot-toast'; // ✅ Imported here
 
 // --- Pages ---
@@ -23,126 +23,135 @@ import MyStores from './pages/vendor/MyStores.jsx';
 // --- Components ---
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import ViewStore from './pages/vendor/ViewStore.jsx';
+import VendorQRPage from './pages/vendor/VendorQRPage.jsx';
 
 // --- Helper Component: Dashboard Resolver ---
 const DashboardResolver = () => {
-  const { user } = useAuthStore();
-  if (user?.role === 'vendor') {
-    return <VendorDashboard />;
-  }
-  return <Home />;
+    const { user } = useAuthStore();
+    if (user?.role === 'vendor') {
+        return <VendorDashboard />;
+    }
+    return <Home />;
 };
 
 function App() {
-  return (
-    <div>
-      {/* ✅ FIX: Render the Toaster component here so toasts can appear */}
-      <Toaster 
-        position="top-center" 
-        reverseOrder={false}
-        toastOptions={{
-          style: {
-            borderRadius: '10px',
-            background: '#333',
-            color: '#fff',
-          },
-        }} 
-      />
+    return (
+        <div>
+            {/* ✅ FIX: Render the Toaster component here so toasts can appear */}
+            <Toaster
+                position="top-center"
+                reverseOrder={false}
+                toastOptions={{
+                    style: {
+                        borderRadius: '10px',
+                        background: '#333',
+                        color: '#fff',
+                    },
+                }}
+            />
 
-      <Routes>
-        {/* --- Public Routes --- */}
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/login" element={<Login />} />
+            <Routes>
+                {/* --- Public Routes --- */}
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/login" element={<Login />} />
 
-        {/* --- Root Route: Auto-detects user type --- */}
-        <Route path="/" element={
-            <ProtectedRoute>
-                <DashboardResolver />
-            </ProtectedRoute>
-        } />
-        
-        <Route path="/home" element={
-            <ProtectedRoute>
-                <DashboardResolver />
-            </ProtectedRoute>
-        } />
+                {/* --- Root Route: Auto-detects user type --- */}
+                <Route path="/" element={
+                    <ProtectedRoute>
+                        <DashboardResolver />
+                    </ProtectedRoute>
+                } />
 
-        {/* ==================================================
+                <Route path="/home" element={
+                    <ProtectedRoute>
+                        <DashboardResolver />
+                    </ProtectedRoute>
+                } />
+
+                {/* ==================================================
             SHARED ROUTES (Accessible by BOTH User & Vendor)
            ================================================== */}
-        <Route path="/check-balance" element={<ProtectedRoute><CheckBalance /></ProtectedRoute>} />
-        <Route path="/recent-transactions" element={<ProtectedRoute><RecentTransactions /></ProtectedRoute>} />
-        <Route path="/moneytransfer" element={<ProtectedRoute><MoneyTransfer /></ProtectedRoute>} />
-        <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+                <Route path="/recent-transactions" element={<ProtectedRoute><RecentTransactions /></ProtectedRoute>} />
+                <Route path="/moneytransfer" element={<ProtectedRoute><MoneyTransfer /></ProtectedRoute>} />
+                <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
 
 
-        {/* ==================================================
+                {/* ==================================================
             USER ONLY ROUTES (allowedRoles=['user'])
            ================================================== */}
-        <Route path="/qrscanner" element={
-            <ProtectedRoute allowedRoles={['user']}>
-                <QRScanner />
-            </ProtectedRoute>
-        } />
+                <Route path="/qrscanner" element={
+                    <ProtectedRoute allowedRoles={['user']}>
+                        <QRScanner />
+                    </ProtectedRoute>
+                } />
 
-        <Route path="/paypeople" element={
-            <ProtectedRoute allowedRoles={['user']}>
-                <PayPeoplePage />
-            </ProtectedRoute>
-        } />
+                <Route path="/paypeople" element={
+                    <ProtectedRoute allowedRoles={['user']}>
+                        <PayPeoplePage />
+                    </ProtectedRoute>
+                } />
 
-        <Route path="/search-stores" element={
-            <ProtectedRoute allowedRoles={['user']}>
-                <SearchStores />
-            </ProtectedRoute>
-        } />
+                <Route path="/search-stores" element={
+                    <ProtectedRoute allowedRoles={['user']}>
+                        <SearchStores />
+                    </ProtectedRoute>
+                } />
 
-        <Route path="/store-details" element={
-            <ProtectedRoute allowedRoles={['user']}>
-                <StoreDetails />
-            </ProtectedRoute>
-        } />
+                <Route path="/store-details" element={
+                    <ProtectedRoute allowedRoles={['user']}>
+                        <StoreDetails />
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/check-balance" element={<ProtectedRoute allowedRoles={['user']}><CheckBalance /></ProtectedRoute>} />
 
 
-        {/* ==================================================
+                {/* ==================================================
             VENDOR ONLY ROUTES (allowedRoles=['vendor'])
            ================================================== */}
-        <Route path="/vendor-dashboard" element={
-            <ProtectedRoute allowedRoles={['vendor']}>
-                <VendorDashboard />
-            </ProtectedRoute>
-        } />
+                <Route path="/vendor-dashboard" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                        <VendorDashboard />
+                    </ProtectedRoute>
+                } />
 
-        <Route path="/vendor/my-stores" element={
-            <ProtectedRoute allowedRoles={['vendor']}>
-                <MyStores />
-            </ProtectedRoute>
-        } />
+                <Route path="/vendor/my-stores" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                        <MyStores />
+                    </ProtectedRoute>
+                } />
 
-        <Route path="/vendor/add-store" element={
-            <ProtectedRoute allowedRoles={['vendor']}>
-                <AddStore />
-            </ProtectedRoute>
-        } />
+                <Route path="/vendor/add-store" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                        <AddStore />
+                    </ProtectedRoute>
+                } />
 
-        <Route path="/vendor/edit-items" element={
-            <ProtectedRoute allowedRoles={['vendor']}>
-                <EditStoreItems />
-            </ProtectedRoute>
-        } />
+                <Route path="/vendor/edit-items" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                        <EditStoreItems />
+                    </ProtectedRoute>
+                } />
 
-        <Route path="/vendor/view-store" element={
-            <ProtectedRoute allowedRoles={['vendor']}>
-                <ViewStore />
-            </ProtectedRoute>
-        } />
+                <Route path="/vendor/view-store" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                        <ViewStore />
+                    </ProtectedRoute>
+                } />
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
 
-      </Routes>
-    </div>
-  )
+                <Route path="/vendor/check-balance" element={
+                    <ProtectedRoute allowedRoles={['vendor']}>
+                        <VendorQRPage />
+                    </ProtectedRoute>
+                } />
+
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+
+            </Routes>
+        </div>
+    )
 }
 
 export default App;

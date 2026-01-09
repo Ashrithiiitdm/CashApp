@@ -35,10 +35,10 @@ export const resolveStaticQr = async (req, res) => {
         if (store_id) {
             const { rows } = await pool.query(
                 `
-                    SELECT store_id, display_name FROM Stores WHERE store_id = $1 AND isActive = $2
+                    SELECT store_id, display_name FROM Stores WHERE store_id = $1
                 
                 `,
-                [store_id, true]
+                [store_id]
             );
 
             if (!rows.length) {
